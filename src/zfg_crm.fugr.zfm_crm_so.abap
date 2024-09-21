@@ -13,8 +13,8 @@ FUNCTION zfm_crm_so.
   zfmdatasave1 'ZFM_CRM_SO'.
   zfmdatasave2 'B'.
   COMMIT WORK.
-  IF data IS INITIAL.
-    fillmsg 'E' '请传入DATA数据后再调用本接口'.
+  IF data IS INITIAL OR data-items IS INITIAL.
+    fillmsg 'E' '请传入抬头和明细数据后再调用本接口'.
   ENDIF.
   CLEAR:rtype,rtmsg,vbeln.
 
@@ -72,7 +72,7 @@ FUNCTION zfm_crm_so.
   DATA:posnr TYPE vbap-posnr.
 **********************************
   DATA:wa_head TYPE ztcrm_so_head,
-       lt_item TYPE TABLE OF ZTCRM_SO_item.
+       lt_item TYPE TABLE OF ztcrm_so_item.
 
   RANGES:s_zcolname FOR ztsd203-zcolname.
   RANGES:s_matnr    FOR vbap-matnr.
@@ -81,6 +81,8 @@ FUNCTION zfm_crm_so.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
+
+  PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
 
   CLEAR:s_zcolname[],s_matnr[].
   CLEAR:s_zcolname.s_zcolname = 'IEQJQJ'. APPEND s_zcolname.
@@ -101,15 +103,72 @@ FUNCTION zfm_crm_so.
     s_matnr-low = wa_ztsd203-zseloption.
     COLLECT s_matnr.
   ENDLOOP.
-
+  SELECT
+    *
+    FROM ttxit
+    WHERE tdobject IN ( 'VBBK','VBBP' )
+    AND tdspras = @sy-langu
+    AND tdid LIKE 'Z%'
+    ORDER BY tdobject,tdid
+    INTO TABLE @DATA(lt_ttxit)
+    .
   CASE action.
     WHEN 'S'.
+      " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
+      SELECT
+        vbak~vbeln,
+        vbap~posnr,
+        vbak~new_contractid,
+        vbap~new_contractdetailid,
+        @space AS action
+        FROM ztcrm_so_item AS vbap
+        JOIN ztcrm_so_head AS vbak ON vbap~new_contractid = vbap~new_contractid
+        WHERE vbak~new_contractid = @data-new_contractid
+        INTO TABLE @DATA(lt_check)
+        .
+      SORT lt_check BY new_contractdetailid.
       MOVE-CORRESPONDING data TO wa_head.
       MOVE-CORRESPONDING data-items TO lt_item.
       LOOP AT lt_item ASSIGNING FIELD-SYMBOL(<lt_item>).
         <lt_item>-new_contractid = data-new_contractid.
+        IF lt_check IS NOT INITIAL.
+          READ TABLE lt_check ASSIGNING FIELD-SYMBOL(<lt_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
+          IF sy-subrc EQ 0.
+            IF NOT ( <lt_item>-action = 'U' OR <lt_item>-action = 'D' ).
+              rtmsg = |明细ID{ <lt_item>-new_contractdetailid }已存在，只能做修改或删除操作|.
+              fillmsg 'E' rtmsg.
+            ENDIF.
+          ELSE.
+            IF NOT <lt_item>-action = 'A'.
+              rtmsg = |明细ID{ <lt_item>-new_contractdetailid }未存在，只能做增行操作|.
+              fillmsg 'E' rtmsg.
+            ENDIF.
+          ENDIF.
+        ELSE.
+          IF NOT <lt_item>-action = 'I'.
+            rtmsg = |单ID{ data-new_contractid }未存在，只能做创建操作|.
+            fillmsg 'E' rtmsg.
+          ENDIF.
+        ENDIF.
+        LOOP AT lt_ttxit ASSIGNING FIELD-SYMBOL(<lt_ttxit>) WHERE tdobject = 'VBBP'.
+          ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <lt_item> TO FIELD-SYMBOL(<zlongtext>).
+          IF sy-subrc EQ 0.
+            DATA(sapno) = |{ <lt_item>-new_contractid }{ <lt_item>-new_contractdetailid }|.
+            PERFORM i_longtext USING sapno <lt_ttxit>-tdid <zlongtext>.
+            CLEAR <zlongtext>.
+            UNASSIGN <zlongtext>.
+          ENDIF.
+        ENDLOOP.
       ENDLOOP.
-      MODIFY ZTCRM_SO_item FROM TABLE lt_item.
+      LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
+        ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE wa_head TO <zlongtext>.
+        IF sy-subrc EQ 0.
+          PERFORM i_longtext USING wa_head-new_contractid <lt_ttxit>-tdid <zlongtext>.
+          CLEAR <zlongtext>.
+          UNASSIGN <zlongtext>.
+        ENDIF.
+      ENDLOOP.
+      MODIFY ztcrm_so_item FROM TABLE lt_item.
       IF sy-subrc NE 0.
         subrc = 4.
       ENDIF.
@@ -309,121 +368,30 @@ FUNCTION zfm_crm_so.
       PERFORM addzero(zpubform) CHANGING sales_partners-partn_numb.
       APPEND sales_partners.
 
-      CLEAR:order_text[].
-      IF data-z001 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z001.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "抬头备注
-          order_text-text_id    = 'Z001'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z002 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z002.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "合同抬头备注
-          order_text-text_id    = 'Z002'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z006 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z006.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "质量要求标准
-          order_text-text_id    = 'Z006'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z007 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z007.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "运输方式以及运费承担
-          order_text-text_id    = 'Z007'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z008 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z008.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "支付方式
-          order_text-text_id    = 'Z008'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z009 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z009.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "备注
-          order_text-text_id    = 'Z009'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
+      LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
+        ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE data TO <zlongtext>.
+        IF sy-subrc EQ 0.
+          CLEAR:order_text[].
+          "切割文本
+          CLEAR:text_stream,text_stream[],lines[],lines.
+          text_stream-text = <zlongtext>.
+          APPEND text_stream.
+          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+            TABLES
+              text_stream = text_stream
+              itf_text    = lines.
+          LOOP AT lines.
+            CLEAR:order_text.
+            "抬头备注
+            order_text-text_id    = <lt_ttxit>-tdid.
+            order_text-langu      = sy-langu.
+            order_text-format_col = '*' .
+            order_text-text_line  = lines-tdline.
+            APPEND order_text.
+          ENDLOOP.
+          UNASSIGN <zlongtext>.
+        ENDIF.
+      ENDLOOP.
 **********************************
       "行项目
       posnr = 0 .
@@ -500,27 +468,25 @@ FUNCTION zfm_crm_so.
 *        APPEND: SALES_ITEMS_IN,SALES_ITEMS_INX,SALES_SCHEDULES_IN,SALES_SCHEDULES_INX.
 
 *文本
-        IF <item>-z001 IS NOT INITIAL.
-          "切割文本
-          CLEAR:text_stream,text_stream[],lines[],lines.
-          text_stream-text = <item>-z001.
-          APPEND text_stream.
-          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-            TABLES
-              text_stream = text_stream
-              itf_text    = lines.
-          LOOP AT lines.
-            CLEAR:order_text.
-            "合同项目备注
-            CLEAR:order_text.
-            order_text-itm_number = posnr.
-            order_text-text_id    = 'Z001'.
-            order_text-langu      = sy-langu .
-            order_text-format_col = '*' .
-            order_text-text_line  = lines-tdline.
-            APPEND order_text.
-          ENDLOOP.
-        ENDIF.
+        "切割文本
+        CLEAR:text_stream,text_stream[],lines[],lines.
+        text_stream-text = <item>-z001.
+        APPEND text_stream.
+        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+          TABLES
+            text_stream = text_stream
+            itf_text    = lines.
+        LOOP AT lines.
+          CLEAR:order_text.
+          "合同项目备注
+          CLEAR:order_text.
+          order_text-itm_number = posnr.
+          order_text-text_id    = 'Z001'.
+          order_text-langu      = sy-langu .
+          order_text-format_col = '*' .
+          order_text-text_line  = lines-tdline.
+          APPEND order_text.
+        ENDLOOP.
         "EDIT BY DONGPZ AT 26.11.2022 13:08:41 价格
         CLEAR:sales_conditions_in,sales_conditions_inx.
         sales_conditions_in-itm_number = posnr.
@@ -751,122 +717,30 @@ FUNCTION zfm_crm_so.
       extensionin-valuepart1 = wa_extkx.
       APPEND extensionin.
 
-      CLEAR:order_text[].
-      IF data-z001 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z001.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "抬头备注
-          order_text-text_id    = 'Z001'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z002 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z002.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "合同抬头备注
-          order_text-text_id    = 'Z002'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z006 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z006.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "质量要求标准
-          order_text-text_id    = 'Z006'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z007 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z007.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "运输方式以及运费承担
-          order_text-text_id    = 'Z007'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z008 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z008.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "支付方式
-          order_text-text_id    = 'Z008'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-      IF data-z009 IS NOT INITIAL.
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = data-z009.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "备注
-          order_text-text_id    = 'Z009'.
-          order_text-langu      = sy-langu.
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
-        ENDLOOP.
-      ENDIF.
-
+      LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
+        ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE data TO <zlongtext>.
+        IF sy-subrc EQ 0.
+          CLEAR:order_text[].
+          "切割文本
+          CLEAR:text_stream,text_stream[],lines[],lines.
+          text_stream-text = <zlongtext>.
+          APPEND text_stream.
+          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+            TABLES
+              text_stream = text_stream
+              itf_text    = lines.
+          LOOP AT lines.
+            CLEAR:order_text.
+            "抬头备注
+            order_text-text_id    = <lt_ttxit>-tdid.
+            order_text-langu      = sy-langu.
+            order_text-format_col = '*' .
+            order_text-text_line  = lines-tdline.
+            APPEND order_text.
+          ENDLOOP.
+          UNASSIGN <zlongtext>.
+        ENDIF.
+      ENDLOOP.
 **********************************
 *      "合作伙伴
 *      SALES_PARTNERS-PARTN_ROLE = 'AG'.
@@ -951,27 +825,25 @@ FUNCTION zfm_crm_so.
           ENDIF.
 
 *文本
-          IF <item>-z001 IS NOT INITIAL.
-            "切割文本
-            CLEAR:text_stream,text_stream[],lines[],lines.
-            text_stream-text = <item>-z001.
-            APPEND text_stream.
-            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-              TABLES
-                text_stream = text_stream
-                itf_text    = lines.
-            LOOP AT lines.
-              CLEAR:order_text.
-              "合同项目备注
-              CLEAR:order_text.
-              order_text-itm_number = posnr.
-              order_text-text_id    = 'Z001'.
-              order_text-langu      = sy-langu .
-              order_text-format_col = '*' .
-              order_text-text_line  = lines-tdline.
-              APPEND order_text.
-            ENDLOOP.
-          ENDIF.
+          "切割文本
+          CLEAR:text_stream,text_stream[],lines[],lines.
+          text_stream-text = <item>-z001.
+          APPEND text_stream.
+          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+            TABLES
+              text_stream = text_stream
+              itf_text    = lines.
+          LOOP AT lines.
+            CLEAR:order_text.
+            "合同项目备注
+            CLEAR:order_text.
+            order_text-itm_number = posnr.
+            order_text-text_id    = 'Z001'.
+            order_text-langu      = sy-langu .
+            order_text-format_col = '*' .
+            order_text-text_line  = lines-tdline.
+            APPEND order_text.
+          ENDLOOP.
 *增强字段
           CLEAR:wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
@@ -1050,27 +922,25 @@ FUNCTION zfm_crm_so.
           APPEND: order_item_in,order_item_inx,schedule_lines,schedule_linesx.
 
 *文本
-          IF <item>-z001 IS NOT INITIAL.
-            "切割文本
-            CLEAR:text_stream,text_stream[],lines[],lines.
-            text_stream-text = <item>-z001.
-            APPEND text_stream.
-            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-              TABLES
-                text_stream = text_stream
-                itf_text    = lines.
-            LOOP AT lines.
-              CLEAR:order_text.
-              "合同项目备注
-              CLEAR:order_text.
-              order_text-itm_number = posnr.
-              order_text-text_id    = 'Z001'.
-              order_text-langu      = sy-langu .
-              order_text-format_col = '*' .
-              order_text-text_line  = lines-tdline.
-              APPEND order_text.
-            ENDLOOP.
-          ENDIF.
+          "切割文本
+          CLEAR:text_stream,text_stream[],lines[],lines.
+          text_stream-text = <item>-z001.
+          APPEND text_stream.
+          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+            TABLES
+              text_stream = text_stream
+              itf_text    = lines.
+          LOOP AT lines.
+            CLEAR:order_text.
+            "合同项目备注
+            CLEAR:order_text.
+            order_text-itm_number = posnr.
+            order_text-text_id    = 'Z001'.
+            order_text-langu      = sy-langu .
+            order_text-format_col = '*' .
+            order_text-text_line  = lines-tdline.
+            APPEND order_text.
+          ENDLOOP.
 *增强字段
           CLEAR:wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
