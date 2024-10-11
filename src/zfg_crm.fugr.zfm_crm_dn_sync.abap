@@ -5,6 +5,7 @@ FUNCTION zfm_crm_dn_sync .
 *"     VALUE(TCODE) TYPE  SY-TCODE OPTIONAL
 *"     VALUE(IT_XLIKP) TYPE  SHP_LIKP_T OPTIONAL
 *"     VALUE(IT_YLIKP) TYPE  SHP_YLIKP_T OPTIONAL
+*"     VALUE(TRTYP) TYPE  T180-TRTYP OPTIONAL
 *"  EXPORTING
 *"     VALUE(RTYPE) TYPE  BAPI_MTYPE
 *"     VALUE(RTMSG) TYPE  BAPI_MSG
@@ -111,7 +112,22 @@ FUNCTION zfm_crm_dn_sync .
     <main_data>-date           = <group>-bldat .
     <main_data>-deliverytime   = <group>-wadat_ist .
     <main_data>-deliverystatus = <group>-wbstk .
-    <main_data>-accountid      = <group>-kunnr .
+*    <main_data>-accountid      = <group>-kunnr .
+    SELECT SINGLE
+      b~smtp_addr
+      FROM but021_fs AS a
+      JOIN adr6 AS b
+      ON a~addrnumber = b~addrnumber
+      WHERE a~partner = @<group>-kunnr
+      INTO @DATA(smtp_addr)
+      .
+    IF cl_abap_matcher=>matches( pattern = `^[a-zA-Z0-9._%+-]+@crm\.com$` text = to_lower( smtp_addr ) ) = abap_true.
+      DATA(len) = strlen( smtp_addr ) - 8.
+      <main_data>-accountid      = <group>-kunnr(len) .
+    ELSE.
+      <main_data>-accountid      = smtp_addr .
+    ENDIF.
+
     LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
       READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfa>) WITH KEY vbeln = <mem>-vbeln posnr = <mem>-posnr BINARY SEARCH.
       IF sy-subrc NE 0.
@@ -157,7 +173,7 @@ FUNCTION zfm_crm_dn_sync .
     rtmsg = '同步CRM成功'.
   ELSE.
     rtype = 'E'.
-    rtmsg = |同步CRM失败，状态码：{ status }，http reason：{ msg }，CRM返回：{ crm_return-_error_message }|.
+    rtmsg = |同步CRM失败，状态码：[{ status }]，http reason：[{ msg }]，CRM返回：[{ crm_return-_error_message }]|.
   ENDIF.
 
 

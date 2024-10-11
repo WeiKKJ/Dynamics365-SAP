@@ -306,7 +306,7 @@ FUNCTION zfm_crm_bp_change.
   ENDIF.
 
   IF data-regio IS NOT INITIAL.
-    ls_addresses-data-postal-data-region = data-regio.     " 地区代码
+    ls_addresses-data-postal-data-region = |{ data-regio ALPHA = IN }|.     " 地区代码
     ls_addresses-data-postal-datax-region = abap_true.     " 地区代码
   ENDIF.
 

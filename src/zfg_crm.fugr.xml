@@ -133,6 +133,11 @@
        <OPTIONAL>X</OPTIONAL>
        <TYP>SHP_YLIKP_T</TYP>
       </RSIMP>
+      <RSIMP>
+       <PARAMETER>TRTYP</PARAMETER>
+       <OPTIONAL>X</OPTIONAL>
+       <TYP>T180-TRTYP</TYP>
+      </RSIMP>
      </IMPORT>
      <CHANGING>
       <RSCHA>
@@ -190,6 +195,11 @@
        <PARAMETER>IT_YLIKP</PARAMETER>
        <KIND>P</KIND>
        <STEXT>Database Status: Delivery Header</STEXT>
+      </RSFDO>
+      <RSFDO>
+       <PARAMETER>TRTYP</PARAMETER>
+       <KIND>P</KIND>
+       <STEXT>事务类型</STEXT>
       </RSFDO>
       <RSFDO>
        <PARAMETER>RTYPE</PARAMETER>

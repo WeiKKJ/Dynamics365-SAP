@@ -146,7 +146,7 @@ FUNCTION zfm_crm_bp_create.
   ls_addresses-data-postal-data-langu = sy-langu."语言
   ls_addresses-data-postal-data-postl_cod1 = data-pstlz.  " 邮政编码
   ls_addresses-data-postal-data-country = data-land1.     " 国家代码
-  ls_addresses-data-postal-data-region = data-regio.     " 地区代码
+  ls_addresses-data-postal-data-region = |{ data-regio ALPHA = IN }|.     " 地区代码
   ls_addresses-data-postal-data-city = data-ort01.     " 地区代码
   ls_addresses-data-postal-data-str_suppl3 = data-strsuppl3.     " 街道2 WD
   ls_addresses-data-postal-data-location = data-location.     " 街道3 WD

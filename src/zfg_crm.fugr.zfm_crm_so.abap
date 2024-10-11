@@ -112,6 +112,78 @@ FUNCTION zfm_crm_so.
     ORDER BY tdobject,tdid
     INTO TABLE @DATA(lt_ttxit)
     .
+  " 数据校验  24.09.2024 15:18:51 by kkw
+  checkinitial data-new_contractid       'CRM合同ID'            .
+  checkinitial data-bstkd       '客户参考'            .
+  checkinitial data-auart       '销售凭证类型'          .
+  checkinitial data-kunnr_we    '售达方'             .
+  checkinitial data-kunnr_ag    '送达方'             .
+  checkinitial data-vkorg       '销售组织'            .
+  checkinitial data-vtweg       '分销渠道'            .
+  checkinitial data-prsdt       '凭证日期'            .
+  checkinitial data-guebg       '有效期自'            .
+  checkinitial data-gueen       '有效期至'            .
+  checkinitial data-zhtyf       '合同月份'            .
+  checkinitial data-spart       '产品组'             .
+  checkinitial data-zhwlx       '货物类型'            .
+  checkinitial data-vkbur       '销售办事处'           .
+  checkinitial data-vkgrp       '销售组'             .
+  checkinitial data-waerk       '凭证货币'            .
+  checkinitial data-kursk       '汇率'              .
+  checkinitial data-zterm       '付款条件'            .
+  checkinitial data-zhtjgfs     '合同加工方式'          .
+  checkinitial data-zdjbl       '定金比例'            .
+  checkinitial data-zisdxs      '销售类型'            .
+  checkinitial data-zcpyt       '产品用途'            .
+  PERFORM addzero(zpubform) CHANGING data-kunnr_we.
+  PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
+
+  IF data-items IS INITIAL.
+    fillmsg 'E' '合同明细不能为空'.
+  ENDIF.
+  LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>) GROUP BY ( new_contractdetailid = <item>-new_contractdetailid
+    index = GROUP INDEX size = GROUP SIZE
+     ) ASSIGNING FIELD-SYMBOL(<group>).
+    IF <group>-size NE 1.
+      rtmsg = |CRM合同明细ID[{ <group>-new_contractdetailid }]重复[{ <group>-size }]次，请核实明细数据|.
+      fillmsg 'E' rtmsg.
+    ENDIF.
+    LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
+
+      mes = '第' && sy-tabix && '行,' && '品名'           .
+      checkinitial <mem>-groes mes.
+      mes = '第' && sy-tabix && '行,' && 'CRM合同明细ID'           .
+      checkinitial <mem>-new_contractdetailid mes.
+      mes = '第' && sy-tabix && '行,' && '厚度'           .
+      checkinitial <mem>-houdu mes.
+      mes = '第' && sy-tabix && '行,' && '宽度'           .
+      checkinitial <mem>-width mes.
+      mes = '第' && sy-tabix && '行,' && '材质'           .
+      checkinitial <mem>-caizhi mes.
+      mes = '第' && sy-tabix && '行,' && '工厂'           .
+      checkinitial <mem>-werks mes.
+      mes = '第' && sy-tabix && '行,' && '销售单位'         .
+      checkinitial <mem>-vrkme mes.
+      mes = '第' && sy-tabix && '行,' && '订单数量'         .
+      checkinitial <mem>-kwmeng mes.
+      mes = '第' && sy-tabix && '行,' && '价格'           .
+      checkinitial <mem>-kbetr mes.
+      mes = '第' && sy-tabix && '行,' && '税率'           .
+      checkinitial <mem>-mwskz mes.
+
+*单位转换
+      CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
+        EXPORTING
+          input          = <mem>-vrkme
+          language       = sy-langu
+        IMPORTING
+          output         = <mem>-vrkme
+        EXCEPTIONS
+          unit_not_found = 1
+          OTHERS         = 2.
+    ENDLOOP.
+  ENDLOOP.
+
   CASE action.
     WHEN 'S'.
       " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
@@ -128,25 +200,31 @@ FUNCTION zfm_crm_so.
         .
       SORT lt_check BY new_contractdetailid.
       MOVE-CORRESPONDING data TO wa_head.
+      wa_head-kunnr_we = |{ wa_head-kunnr_we ALPHA = IN }|.
+      wa_head-kunnr_ag = |{ wa_head-kunnr_ag ALPHA = IN }|.
+      CLEAR wa_head-vbeln.
       MOVE-CORRESPONDING data-items TO lt_item.
       LOOP AT lt_item ASSIGNING FIELD-SYMBOL(<lt_item>).
+        CLEAR:<lt_item>-posnr.
         <lt_item>-new_contractid = data-new_contractid.
         IF lt_check IS NOT INITIAL.
           READ TABLE lt_check ASSIGNING FIELD-SYMBOL(<lt_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
           IF sy-subrc EQ 0.
+            wa_head-vbeln = |{ <lt_check>-vbeln ALPHA = IN }|.
+            <lt_item>-posnr = |{ <lt_check>-posnr ALPHA = IN }|.
             IF NOT ( <lt_item>-action = 'U' OR <lt_item>-action = 'D' ).
-              rtmsg = |明细ID{ <lt_item>-new_contractdetailid }已存在，只能做修改或删除操作|.
+              rtmsg = |明细ID[{ <lt_item>-new_contractdetailid }]已存在，只能做修改或删除操作|.
               fillmsg 'E' rtmsg.
             ENDIF.
           ELSE.
             IF NOT <lt_item>-action = 'A'.
-              rtmsg = |明细ID{ <lt_item>-new_contractdetailid }未存在，只能做增行操作|.
+              rtmsg = |明细ID[{ <lt_item>-new_contractdetailid }]未存在，只能做增行操作|.
               fillmsg 'E' rtmsg.
             ENDIF.
           ENDIF.
         ELSE.
           IF NOT <lt_item>-action = 'I'.
-            rtmsg = |单ID{ data-new_contractid }未存在，只能做创建操作|.
+            rtmsg = |单ID[{ data-new_contractid }]未存在，只能做创建操作|.
             fillmsg 'E' rtmsg.
           ENDIF.
         ENDIF.
@@ -179,12 +257,14 @@ FUNCTION zfm_crm_so.
       IF subrc EQ 0.
         COMMIT WORK.
         rtmsg = 'S:数据保存成功'.
+        rtype = 'S'.
         zfmdatasave2 'R'.
       ELSE.
         ROLLBACK WORK.
         rtmsg = 'E:数据保存失败'.
+        fillmsg rtmsg(1) rtmsg.
       ENDIF.
-      fillmsg rtmsg(1) rtmsg.
+
       RETURN.
     WHEN 'I'.
       SELECT
@@ -193,10 +273,11 @@ FUNCTION zfm_crm_so.
         WHERE bstkd = @data-bstkd
         .
       IF sy-subrc = 0.
-        rtmsg = |外部合同号：{ data-bstkd }已创建销售订单，请确认！|.
+        rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
         fillmsg 'E' rtmsg.
       ENDIF.
 
+      checkinitial data-new_contractid       'CRM合同ID'            .
       checkinitial data-bstkd       '客户参考'            .
       checkinitial data-auart       '销售凭证类型'          .
       checkinitial data-kunnr_we    '售达方'             .
@@ -226,11 +307,13 @@ FUNCTION zfm_crm_so.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
-      LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>).
+      LOOP AT data-items ASSIGNING <item>.
 *        mes = '第' && sy-tabix && '行,' && '物料'           .
 *        checkinitial <item>-matnr mes.
         mes = '第' && sy-tabix && '行,' && '品名'           .
         checkinitial <item>-groes mes.
+        mes = '第' && sy-tabix && '行,' && 'CRM合同明细ID'           .
+        checkinitial <item>-new_contractdetailid mes.
         mes = '第' && sy-tabix && '行,' && '厚度'           .
         checkinitial <item>-houdu mes.
         mes = '第' && sy-tabix && '行,' && '宽度'           .
@@ -536,7 +619,7 @@ FUNCTION zfm_crm_so.
       IF subrc = 0 AND salesdocument_ex IS NOT INITIAL.
         PERFORM bapirun(zpubform)  USING 'S'.
         rtype = 'S'.
-        CONCATENATE '创建销售合同成功，单号：'  salesdocument_ex INTO rtmsg.
+        rtmsg = |创建销售合同成功，单号：[{ salesdocument_ex }]|.
         vbeln = salesdocument_ex.
         fillmsg 'S' rtmsg.
       ELSE.
@@ -1094,7 +1177,7 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ELSE.
         PERFORM bapirun(zpubform)  USING 'S'.
-        CONCATENATE '删除销售合同成功，单号：'  salesdocument_ex INTO rtmsg.
+        rtmsg = |删除销售合同成功，单号：[{ salesdocument_ex }]|.
         fillmsg 'S' rtmsg.
       ENDIF.
     WHEN OTHERS.
