@@ -77,7 +77,7 @@ FUNCTION zfm_crm_so.
   RANGES:s_zcolname FOR ztsd203-zcolname.
   RANGES:s_matnr    FOR vbap-matnr.
 
-  PERFORM checkdom USING 'ZD_SO_ACTION' action CHANGING rtmsg.
+  PERFORM domain_value_check USING action CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
@@ -135,9 +135,18 @@ FUNCTION zfm_crm_so.
   checkinitial data-zdjbl       '定金比例'            .
   checkinitial data-zisdxs      '销售类型'            .
   checkinitial data-zcpyt       '产品用途'            .
-  PERFORM addzero(zpubform) CHANGING data-kunnr_we.
-  PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
 
+  DATA(comp) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( data ) )->components.
+  LOOP AT comp ASSIGNING FIELD-SYMBOL(<comp>).
+    ASSIGN COMPONENT <comp>-name OF STRUCTURE data TO FIELD-SYMBOL(<data_value>).
+    IF sy-subrc EQ 0.
+      PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
+      UNASSIGN <data_value>.
+      IF rtmsg IS NOT INITIAL.
+        fillmsg 'E' rtmsg.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
   IF data-items IS INITIAL.
     fillmsg 'E' '合同明细不能为空'.
   ENDIF.
@@ -149,28 +158,39 @@ FUNCTION zfm_crm_so.
       fillmsg 'E' rtmsg.
     ENDIF.
     LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
-
-      mes = '第' && sy-tabix && '行,' && '品名'           .
+      DATA(tabix) = sy-tabix.
+      mes = '第' && tabix && '行,' && '品名'           .
       checkinitial <mem>-groes mes.
-      mes = '第' && sy-tabix && '行,' && 'CRM合同明细ID'           .
+      mes = '第' && tabix && '行,' && 'CRM合同明细ID'           .
       checkinitial <mem>-new_contractdetailid mes.
-      mes = '第' && sy-tabix && '行,' && '厚度'           .
+      mes = '第' && tabix && '行,' && '厚度'           .
       checkinitial <mem>-houdu mes.
-      mes = '第' && sy-tabix && '行,' && '宽度'           .
+      mes = '第' && tabix && '行,' && '宽度'           .
       checkinitial <mem>-width mes.
-      mes = '第' && sy-tabix && '行,' && '材质'           .
+      mes = '第' && tabix && '行,' && '材质'           .
       checkinitial <mem>-caizhi mes.
-      mes = '第' && sy-tabix && '行,' && '工厂'           .
+      mes = '第' && tabix && '行,' && '工厂'           .
       checkinitial <mem>-werks mes.
-      mes = '第' && sy-tabix && '行,' && '销售单位'         .
+      mes = '第' && tabix && '行,' && '销售单位'         .
       checkinitial <mem>-vrkme mes.
-      mes = '第' && sy-tabix && '行,' && '订单数量'         .
+      mes = '第' && tabix && '行,' && '订单数量'         .
       checkinitial <mem>-kwmeng mes.
-      mes = '第' && sy-tabix && '行,' && '价格'           .
+      mes = '第' && tabix && '行,' && '价格'           .
       checkinitial <mem>-kbetr mes.
-      mes = '第' && sy-tabix && '行,' && '税率'           .
+      mes = '第' && tabix && '行,' && '税率'           .
       checkinitial <mem>-mwskz mes.
-
+      comp = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( <mem> ) )->components.
+      LOOP AT comp ASSIGNING <comp>.
+        ASSIGN COMPONENT <comp>-name OF STRUCTURE <mem> TO <data_value>.
+        IF sy-subrc EQ 0.
+          PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
+          UNASSIGN <data_value>.
+          IF rtmsg IS NOT INITIAL.
+            rtmsg = |明细第{ tabix }行,{ rtmsg }|.
+            fillmsg 'E' rtmsg.
+          ENDIF.
+        ENDIF.
+      ENDLOOP.
 *单位转换
       CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
         EXPORTING

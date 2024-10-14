@@ -106,3 +106,40 @@ FORM ezsdr  USING    VALUE(p_unlock)
       .
   ENDIF.
 ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form domain_value_check
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      --> DATA
+*&      <-- RTMSG
+*&---------------------------------------------------------------------*
+FORM domain_value_check  USING    p_data
+                         CHANGING p_rtmsg.
+  DATA:it_dd07v TYPE TABLE OF dd07v WITH HEADER LINE,
+       wa_dd01t TYPE dd01t.
+  CLEAR p_rtmsg.
+  CHECK p_data IS NOT INITIAL.
+  TRY.
+      DATA(realname) = CAST cl_abap_elemdescr( cl_abap_typedescr=>describe_by_data( p_data ) )->get_relative_name( ).
+    CATCH cx_root INTO DATA(exc).
+      DATA(exct) = exc->get_text( ).
+      RETURN.
+  ENDTRY.
+  SELECT SINGLE
+    dd04l~domname,
+    dd01t~ddtext
+    FROM dd04l
+    JOIN dd01t ON dd04l~domname = dd01t~domname AND dd01t~ddlanguage = @sy-langu AND dd01t~as4local = 'A'
+    WHERE rollname = @realname
+    AND dd04l~as4local = 'A'
+    INTO @DATA(wa_dom).
+  CHECK wa_dom IS NOT INITIAL.
+
+  PERFORM getdomain(zpubform) TABLES it_dd07v USING wa_dom-domname.
+  CHECK it_dd07v[] IS NOT INITIAL.
+  READ TABLE it_dd07v WITH KEY domvalue_l = p_data.
+  IF sy-subrc NE 0.
+    p_rtmsg = |{ wa_dom-ddtext }[{ p_data }]不在可输入范围内|.
+  ENDIF.
+ENDFORM.
