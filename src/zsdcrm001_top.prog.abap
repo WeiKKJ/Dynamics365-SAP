@@ -7,8 +7,23 @@ DATA: gt_fldct TYPE lvc_t_fcat,
       gv_repid TYPE sy-repid.
 DATA:BEGIN OF gs_out.
        INCLUDE TYPE ztcrm_so_head.
-DATA:  name_ag TYPE name1,
-       name_we TYPE name1,
+DATA:  name_ag      TYPE name1,
+       name_we      TYPE name1,
+       state        TYPE char5,
+       zisdxs_des   TYPE as4text,
+       zhtjgfs_des  TYPE as4text,
+       zhwlx_des    TYPE as4text,
+       zcpyt_des    TYPE as4text,
+       zcpsx_des    TYPE as4text,
+       vkorg_des    TYPE tvkot-vtext,
+       vtweg_des    TYPE tvtwt-vtext,
+       vkbur_des    TYPE tvkbt-bezei,
+       vkgrp_des    TYPE tvgrt-bezei,
+       spart_des    TYPE tspat-vtext,
+       kdgrp_des    TYPE t151t-ktext,
+       province_des TYPE ztsd226-zname,
+       city_des     TYPE ztsd226-zname,
+       county_des   TYPE ztsd226-zname,
        sel,
      END OF gs_out,
      gt_out LIKE TABLE OF gs_out.
@@ -57,3 +72,12 @@ DATA : text(100) TYPE c,
        sapno     TYPE ztlongtext-sapno,
      END OF s_node_repository,
      t_node_repository LIKE TABLE OF s_node_repository.
+
+DATA:BEGIN OF wa_domdes,
+       domname    TYPE dd07t-domname,
+       domvalue_l TYPE dd07t-domvalue_l,
+       ddtext     TYPE dd07t-ddtext,
+     END OF wa_domdes,
+     lt_domdes LIKE TABLE OF wa_domdes.
+
+FIELD-SYMBOLS:<fs> TYPE any.

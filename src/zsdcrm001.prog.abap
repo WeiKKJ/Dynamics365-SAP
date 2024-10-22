@@ -103,12 +103,17 @@ FORM outdata.
 * Implement suitable error handling here
   ENDIF.
   LOOP AT dfies_tab.
-    IF dfies_tab-fieldname = 'MANDT' OR dfies_tab-fieldname = 'JHYXJ'.
+    IF dfies_tab-fieldname = 'MANDT' OR dfies_tab-fieldname = 'NEW_CONTRACTID'.
       CONTINUE.
     ENDIF.
-
-    PERFORM catset TABLES gt_fldct USING:
-          dfies_tab-fieldname dfies_tab-tabname dfies_tab-fieldname dfies_tab-fieldtext.
+    CASE dfies_tab-fieldname.
+      WHEN 'VBELN'.
+        PERFORM catset TABLES gt_fldct USING:
+              dfies_tab-fieldname dfies_tab-tabname dfies_tab-fieldname '合同号'.
+      WHEN OTHERS.
+        PERFORM catset TABLES gt_fldct USING:
+              dfies_tab-fieldname dfies_tab-tabname dfies_tab-fieldname dfies_tab-fieldtext.
+    ENDCASE.
   ENDLOOP.
 
   CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
@@ -179,6 +184,8 @@ USING pv_field pv_reftab pv_reffld pv_text.
 
   ls_fldcat-fieldname =  pv_field.    "字段名
   ls_fldcat-scrtext_l =  pv_text.     "长描述
+  ls_fldcat-scrtext_s =  pv_text.     "短描述
+  ls_fldcat-scrtext_m =  pv_text.     "中描述
   ls_fldcat-coltext   =  pv_text.     "列描述
   ls_fldcat-ref_table =  pv_reftab.   "参考表名
   ls_fldcat-ref_field =  pv_reffld.   "参考字段名
@@ -274,6 +281,95 @@ FORM getitems .
     PERFORM repo_fill_simple .
     o_textedit->delete_text( ).
   ENDIF.
+  LOOP AT gt_item TRANSPORTING NO FIELDS WHERE action NE ''.
+    EXIT.
+  ENDLOOP.
+  IF sy-subrc EQ 0.
+    gs_out-state = '待处理'.
+  ELSE.
+    gs_out-state = '已处理'.
+  ENDIF.
+  SELECT
+    domname,
+    domvalue_l,
+    ddtext
+    FROM dd07t
+    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX' )
+    AND ddlanguage = @sy-langu
+    AND as4local = 'A'
+    ORDER BY domname,domvalue_l
+    INTO TABLE @lt_domdes
+    .
+  getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
+  getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
+  getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
+  getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
+  getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
+  SELECT vkorg,vtext
+    FROM tvkot
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkot).
+  SELECT vtweg,vtext
+    FROM tvtwt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvtwt).
+  SELECT vkbur,bezei
+    FROM tvkbt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkbt).
+  SELECT vkgrp,bezei
+    FROM tvgrt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvgrt).
+  SELECT spart,vtext
+    FROM tspat
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tspat).
+  SELECT kdgrp,ktext
+    FROM t151t
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_t151t).
+  SELECT zid,zname
+    FROM ztsd226
+    WHERE zid IN ( @gs_out-province,@gs_out-city,@gs_out-county )
+    INTO TABLE @DATA(lt_226).
+  READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
+  IF sy-subrc EQ 0.
+    gs_out-vkorg_des = wa1-vtext.
+  ENDIF.
+  READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
+  IF sy-subrc EQ 0.
+    gs_out-vtweg_des = wa2-vtext.
+  ENDIF.
+  READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
+  IF sy-subrc EQ 0.
+    gs_out-vkbur_des = wa3-bezei.
+  ENDIF.
+  READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
+  IF sy-subrc EQ 0.
+    gs_out-vkgrp_des = wa4-bezei.
+  ENDIF.
+  READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
+  IF sy-subrc EQ 0.
+    gs_out-spart_des = wa5-vtext.
+  ENDIF.
+  READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
+  IF sy-subrc EQ 0.
+    gs_out-kdgrp_des = wa6-ktext.
+  ENDIF.
+  READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
+  IF sy-subrc EQ 0.
+    gs_out-province_des = wa226-zname.
+  ENDIF.
+  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
+  IF sy-subrc EQ 0.
+    gs_out-city_des = wa226-zname.
+  ENDIF.
+  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
+  IF sy-subrc EQ 0.
+    gs_out-county_des = wa226-zname.
+  ENDIF.
+  MODIFY TABLE gt_out FROM gs_out.
   CALL SCREEN 900.
 ENDFORM.
 
