@@ -10,8 +10,6 @@
     <OUTPUTLEN>000040</OUTPUTLEN>
     <LOWERCASE>X</LOWERCASE>
     <DDTEXT>CRM合同明细ID</DDTEXT>
-    <ACTFLAG>I</ACTFLAG>
-    <RESERVEDOM>JB</RESERVEDOM>
    </DD01V>
   </asx:values>
  </asx:abap>

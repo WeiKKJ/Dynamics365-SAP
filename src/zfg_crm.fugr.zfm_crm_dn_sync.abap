@@ -82,8 +82,8 @@ FUNCTION zfm_crm_dn_sync .
       vbak~new_contractid,
       vbap~new_contractdetailid
       FROM vbfa
-      JOIN vbak ON vbfa~vbelv = vbak~vbeln
-      JOIN vbap ON vbak~vbeln = vbap~vbeln
+      JOIN vbap ON vbfa~vbelv = vbap~vbeln AND vbfa~posnv = vbap~posnr
+      JOIN vbak ON vbap~vbeln = vbak~vbeln
       FOR ALL ENTRIES IN @lt_dn
       WHERE vbfa~vbeln = @lt_dn-vbeln
       AND vbfa~posnn = @lt_dn-posnr
@@ -108,29 +108,43 @@ FUNCTION zfm_crm_dn_sync .
     ENDIF.
 
     INSERT INITIAL LINE INTO TABLE data-main_data ASSIGNING FIELD-SYMBOL(<main_data>).
-    <main_data>-name           = <group>-vbeln .
+    <main_data>-name           = <lt_vbfav>-vbeln .
     <main_data>-date           = <group>-bldat .
     <main_data>-deliverytime   = <group>-wadat_ist .
-    <main_data>-deliverystatus = <group>-wbstk .
-*    <main_data>-accountid      = <group>-kunnr .
-    SELECT SINGLE
-      b~smtp_addr
-      FROM but021_fs AS a
-      JOIN adr6 AS b
-      ON a~addrnumber = b~addrnumber
-      WHERE a~partner = @<group>-kunnr
-      INTO @DATA(smtp_addr)
-      .
-    IF cl_abap_matcher=>matches( pattern = `^[a-zA-Z0-9._%+-]+@crm\.com$` text = to_lower( smtp_addr ) ) = abap_true.
-      DATA(len) = strlen( smtp_addr ) - 8.
-      <main_data>-accountid      = <group>-kunnr(len) .
-    ELSE.
-      <main_data>-accountid      = smtp_addr .
+    IF tcode = 'VL09' AND ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
+      SELECT SINGLE budat
+        FROM mkpf
+        WHERE mkpf~le_vbeln = @<lt_vbfav>-vbeln
+        AND mkpf~tcode2 = 'VL09'
+        INTO @<main_data>-deliverytime.
     ENDIF.
-
+    CASE <group>-wbstk .
+      WHEN 'A'.
+        <main_data>-deliverystatus = 1 .
+      WHEN 'B'.
+        <main_data>-deliverystatus = 2 .
+      WHEN 'C'.
+        <main_data>-deliverystatus = 3 .
+    ENDCASE.
+*    <main_data>-accountid      = <group>-kunnr .
+*    SELECT SINGLE
+*      b~smtp_addr
+*      FROM but021_fs AS a
+*      JOIN adr6 AS b
+*      ON a~addrnumber = b~addrnumber
+*      WHERE a~partner = @<group>-kunnr
+*      INTO @DATA(smtp_addr)
+*      .
+*    IF cl_abap_matcher=>matches( pattern = `^[a-zA-Z0-9._%+-]+@crm\.com$` text = to_lower( smtp_addr ) ) = abap_true.
+*      DATA(len) = strlen( smtp_addr ) - 8.
+*      <main_data>-accountid      = smtp_addr(len) .
+*    ELSE.
+*      <main_data>-accountid      = <group>-kunnr.
+*    ENDIF.
+    <main_data>-accountid      = <group>-kunnr.
     LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
       READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfa>) WITH KEY vbeln = <mem>-vbeln posnr = <mem>-posnr BINARY SEARCH.
-      IF sy-subrc NE 0.
+      IF sy-subrc EQ 0.
         IF <lt_vbfa>-new_contractdetailid IS INITIAL.
 *          rtmsg = |发货单[{ <group>-vbeln }]，行[{ <mem>-posnr }]不是经由CRM创建，状态变更未同步CRM|.
           CONTINUE.
