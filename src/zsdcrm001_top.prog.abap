@@ -29,7 +29,8 @@ DATA:  name_ag      TYPE name1,
      gt_out LIKE TABLE OF gs_out.
 DATA:BEGIN OF gs_item.
        INCLUDE TYPE ztcrm_so_item.
-DATA:sel,
+DATA:  maktx TYPE maktx,
+       sel,
      END OF gs_item,
      gt_item LIKE TABLE OF gs_item.
 DATA:stbl      TYPE lvc_s_stbl,
@@ -79,5 +80,8 @@ DATA:BEGIN OF wa_domdes,
        ddtext     TYPE dd07t-ddtext,
      END OF wa_domdes,
      lt_domdes LIKE TABLE OF wa_domdes.
+DATA:it_f4      TYPE  lvc_t_f4,
+     wa_f4      TYPE  lvc_s_f4,
+     return_tab TYPE ddshretval OCCURS 0.
 
 FIELD-SYMBOLS:<fs> TYPE any.

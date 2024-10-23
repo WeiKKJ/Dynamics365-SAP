@@ -264,9 +264,35 @@ FORM getitems .
     gs_longtext_im-sapno = gs_out-new_contractid.
     APPEND gs_longtext_im TO gt_longtext_im.
   ENDLOOP.
+  SELECT
+    mara~*,
+    makt~maktx
+    FROM mara
+    LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+    FOR ALL ENTRIES IN @gt_item
+    WHERE mara~chandi = @gt_item-chandi
+    AND mara~caizhi = @gt_item-caizhi
+    AND mara~width = @gt_item-width
+    AND mara~houdu = @gt_item-houdu
+    AND mara~yl2 = @gt_item-yl2
+    AND mara~yl3 = @gt_item-yl3
+    AND mara~yl4 = @gt_item-yl4
+    AND mara~hcl = @gt_item-hcl
+    AND mara~groes = @gt_item-groes
+    INTO TABLE @DATA(lt_mara)
+    .
+*  SORT lt_mara BY matnr.
+
   LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<gt_item>).
     ADD 10 TO posnr.
     <gt_item>-posnr = posnr.
+    READ TABLE lt_mara ASSIGNING FIELD-SYMBOL(<lt_mara>) WITH KEY mara-chandi = <gt_item>-chandi
+    mara-caizhi = <gt_item>-caizhi mara-width = <gt_item>-width mara-houdu = <gt_item>-houdu mara-yl2 = <gt_item>-yl2
+    mara-yl3 = <gt_item>-yl3 mara-yl4 = <gt_item>-yl4 mara-hcl = <gt_item>-hcl mara-groes = <gt_item>-groes.
+    IF sy-subrc EQ 0.
+      <gt_item>-matnr = <lt_mara>-mara-matnr.
+      <gt_item>-maktx = <lt_mara>-maktx.
+    ENDIF.
     LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
       gs_longtext_im-sapmk = 'SD'.
       gs_longtext_im-tdid  = <lt_ttxit>-tdid.
@@ -370,6 +396,7 @@ FORM getitems .
     gs_out-county_des = wa226-zname.
   ENDIF.
   MODIFY TABLE gt_out FROM gs_out.
+  PERFORM fillfldct.
   CALL SCREEN 900.
 ENDFORM.
 
@@ -382,3 +409,87 @@ INCLUDE zsdcrm001_sub_data .
 *&SPWizard: Include inserted by SP Wizard. DO NOT CHANGE THIS LINE!
 INCLUDE zsdcrm001_sub_pbo .
 INCLUDE zsdcrm001_sub_pai .
+*&---------------------------------------------------------------------*
+*& Form fillfldct
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM fillfldct .
+  CLEAR gt_fldct_item.
+  CASE gs_out-spart.
+    WHEN '11' OR '12' OR '13'.
+      PERFORM catset TABLES gt_fldct_item USING:
+            'POSNR '  'ZTCRM_SO_ITEM' 'POSNR ' '项目     '   ,
+            'MATNR '  'ZTCRM_SO_ITEM' 'MATNR ' '物料编码  '   ,
+            'MAKTX ' 'MAKT' 'MAKTX ' '物料描述   '    ,
+            'GROES '  'ZTCRM_SO_ITEM' 'GROES ' '品名     '   ,
+            'CHANDI'  'ZTCRM_SO_ITEM' 'CHANDI' '产地     '   ,
+            'HOUDU '  'ZTCRM_SO_ITEM' 'HOUDU ' '厚度     '   ,
+            'WIDTH '  'ZTCRM_SO_ITEM' 'WIDTH ' '宽度     '   ,
+            'CAIZHI'  'ZTCRM_SO_ITEM' 'CAIZHI' '材质     '   ,
+            'ZHDGC '  'ZTCRM_SO_ITEM' 'ZHDGC ' '厚度公差  '   ,
+            'ZKDGC '  'ZTCRM_SO_ITEM' 'ZKDGC ' '宽度公差  '   ,
+            'YL9   '  'ZTCRM_SO_ITEM' 'YL9   ' '包装方式  '   ,
+            'VRKME '  'ZTCRM_SO_ITEM' 'VRKME ' '销售单位  '   ,
+            'KWMENG'  'ZTCRM_SO_ITEM' 'KWMENG' '订单数量  '   ,
+            'KBETR '  'ZTCRM_SO_ITEM' 'KBETR ' '金额     '   ,
+            'Z001  '  'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备'   ,
+            'WERKS '  'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '   ,
+            'ACTION'  'ZTCRM_SO_ITEM' 'ACTION' '行状态   '   .
+    WHEN '14'.
+      PERFORM catset TABLES gt_fldct_item USING:
+            'POSNR ' 'ZTCRM_SO_ITEM' 'POSNR ' '项目       '    ,
+            'MATNR ' 'ZTCRM_SO_ITEM' 'MATNR ' '物料编码   '    ,
+            'MAKTX ' 'MAKT' 'MAKTX ' '物料描述   '    ,
+            'GROES ' 'ZTCRM_SO_ITEM' 'GROES ' '品名       '    ,
+            'CHANDI' 'ZTCRM_SO_ITEM' 'CHANDI' '产地       '    ,
+            'HOUDU ' 'ZTCRM_SO_ITEM' 'HOUDU ' '厚度       '    ,
+            'WIDTH ' 'ZTCRM_SO_ITEM' 'WIDTH ' '宽度       '    ,
+            'YL3   ' 'ZTCRM_SO_ITEM' 'YL3   ' '镀层含量   '    ,
+            'CAIZHI' 'ZTCRM_SO_ITEM' 'CAIZHI' '材质       '    ,
+            'YL4   ' 'ZTCRM_SO_ITEM' 'YL4   ' '表面处理   '    ,
+            'HCL   ' 'ZTCRM_SO_ITEM' 'HCL   ' '后处理     '    ,
+            'ZHDGC ' 'ZTCRM_SO_ITEM' 'ZHDGC ' '厚度公差   '    ,
+            'ZKDGC ' 'ZTCRM_SO_ITEM' 'ZKDGC ' '宽度公差   '    ,
+            'YL9   ' 'ZTCRM_SO_ITEM' 'YL9   ' '包装方式   '    ,
+            'VRKME ' 'ZTCRM_SO_ITEM' 'VRKME ' '销售单位   '    ,
+            'KWMENG' 'ZTCRM_SO_ITEM' 'KWMENG' '订单数量   '    ,
+            'KBETR ' 'ZTCRM_SO_ITEM' 'KBETR ' '金额       '    ,
+            'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'    ,
+            'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂       '    ,
+            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态     '    .
+    WHEN '15'.
+      PERFORM catset TABLES gt_fldct_item USING:
+            'POSNR ' 'ZTCRM_SO_ITEM' 'POSNR ' '项目     '  ,
+            'MATNR ' 'ZTCRM_SO_ITEM' 'MATNR ' '物料编码 '   ,
+            'MAKTX ' 'MAKT' 'MAKTX ' '物料描述   '    ,
+            'GROES ' 'ZTCRM_SO_ITEM' 'GROES ' '品名     '  ,
+            'CHANDI' 'ZTCRM_SO_ITEM' 'CHANDI' '产地     '  ,
+            'HOUDU ' 'ZTCRM_SO_ITEM' 'HOUDU ' '厚度     '  ,
+            'WIDTH ' 'ZTCRM_SO_ITEM' 'WIDTH ' '宽度     '  ,
+            'YL3   ' 'ZTCRM_SO_ITEM' 'YL3   ' '镀层含量 '   ,
+            'CAIZHI' 'ZTCRM_SO_ITEM' 'CAIZHI' '材质     '  ,
+            'ZSXQB ' 'ZTCRM_SO_ITEM' 'ZSXQB ' '涂层种类 '   ,
+            'YL2   ' 'ZTCRM_SO_ITEM' 'YL2   ' '颜色     '  ,
+            'ZHDGC ' 'ZTCRM_SO_ITEM' 'ZHDGC ' '厚度公差 '   ,
+            'ZKDGC ' 'ZTCRM_SO_ITEM' 'ZKDGC ' '宽度公差 '   ,
+            'YL9   ' 'ZTCRM_SO_ITEM' 'YL9   ' '包装方式 '   ,
+            'VRKME ' 'ZTCRM_SO_ITEM' 'VRKME ' '销售单位 '   ,
+            'KWMENG' 'ZTCRM_SO_ITEM' 'KWMENG' '订单数量 '   ,
+            'KBETR ' 'ZTCRM_SO_ITEM' 'KBETR ' '金额     '  ,
+            'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备'  ,
+            'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '  ,
+            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态   '  .
+  ENDCASE.
+  LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>).
+    CASE <fldct>-fieldname.
+      WHEN 'MATNR'.
+        <fldct>-edit = 'X'.
+        <fldct>-f4availabl = 'X'.
+    ENDCASE.
+  ENDLOOP.
+
+ENDFORM.

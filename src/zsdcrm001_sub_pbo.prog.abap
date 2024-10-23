@@ -182,18 +182,25 @@ MODULE showitems OUTPUT.
   IF o_customcontainer IS INITIAL.
     o_customcontainer = NEW cl_gui_custom_container( container_name = 'CONTI' ).
     alv_grid_item = NEW #( i_parent =  o_customcontainer ).
-*    PERFORM:callalv_item.
-    alv_grid_item->set_TABLE_FOR_FIRST_display(
-      EXPORTING
-        I_STRUCTURE_name =  'ZTCRM_SO_ITEM'
-        CHANGING
-          it_outtab  = gt_item
-          EXCEPTIONS
-            invalid_PARAMETER_combination = 1
-            PROGRAM_error = 2
-            too_many_LINES = 3
-            OTHERS = 4
-    ).
+    CREATE OBJECT lcl_alv_receiver.
+    SET HANDLER lcl_alv_receiver->handle_double_click FOR alv_grid_item.
+    SET HANDLER lcl_alv_receiver->handle_data_changed FOR alv_grid_item.
+    SET HANDLER lcl_alv_receiver->handle_hotspot_click FOR alv_grid_item.
+    SET HANDLER lcl_alv_receiver->handle_toolbar FOR alv_grid_item.
+    SET HANDLER lcl_alv_receiver->handle_user_command FOR alv_grid_item.
+    SET HANDLER lcl_alv_receiver->handle_on_f4 FOR alv_grid_item.
+    alv_grid_item->register_edit_event( i_event_id = cl_gui_alv_grid=>mc_evt_modified )."mc_evt_modified
+    alv_grid_item->register_edit_event( i_event_id = cl_gui_alv_grid=>mc_evt_enter )."mc_evt_enter
+    alv_grid_item->register_delayed_event( i_event_id = cl_gui_alv_grid=>mc_evt_delayed_change_select )."MC_EVT_DELAYED_CHANGE_SELECT
+    CLEAR:it_f4.
+*    CLEAR:wa_f4.
+*    wa_f4-fieldname = 'MATNR'.
+*    wa_f4-register = 'X'.
+*    wa_f4-getbefore = ''.
+*    wa_f4-chngeafter = 'X'.
+*    INSERT wa_f4 INTO TABLE it_f4.
+    alv_grid_item->register_f4_for_fields( it_f4 ).
+    PERFORM:callalv_item.
   ELSE.
     PERFORM:frm_refresh_alv_item.
   ENDIF.
@@ -207,9 +214,6 @@ ENDMODULE.
 *& <--  p2        text
 *&---------------------------------------------------------------------*
 FORM callalv_item .
-  PERFORM catset TABLES gt_fldct_item USING:
-        'POSNR' '' '' '',
-        'GROES' '' '' ''.
   PERFORM callalv_oo IN PROGRAM zvariant_compare
   TABLES gt_item USING alv_grid_item gt_fldct_item 'P1' gs_slayt_item.
 ENDFORM.

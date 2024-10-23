@@ -85,7 +85,8 @@ FUNCTION zfm_crm_bp_create.
   SELECT
     COUNT(*)
     FROM dfkkbptaxnum
-    WHERE taxnumxl = data-taxnumxl.
+    WHERE taxnumxl = data-taxnumxl
+    OR taxnum = data-taxnumxl.
   IF sy-subrc EQ 0.
     rtmsg = |系统中已存在导入的税号，客户号：{ data-taxnumxl }请修改!|.
     fillmsg 'E' rtmsg.
