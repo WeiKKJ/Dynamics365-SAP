@@ -76,13 +76,14 @@ FUNCTION zfm_crm_so.
 
   RANGES:s_zcolname FOR ztsd203-zcolname.
   RANGES:s_matnr    FOR vbap-matnr.
-
+  PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
+  IF rtmsg IS NOT INITIAL.
+    fillmsg 'E' rtmsg.
+  ENDIF.
   PERFORM domain_value_check USING action CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
-
-  PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
 
   CLEAR:s_zcolname[],s_matnr[].
   CLEAR:s_zcolname.s_zcolname = 'IEQJQJ'. APPEND s_zcolname.
@@ -103,15 +104,27 @@ FUNCTION zfm_crm_so.
     s_matnr-low = wa_ztsd203-zseloption.
     COLLECT s_matnr.
   ENDLOOP.
+*  SELECT
+*    *
+*    FROM ttxit
+*    WHERE tdobject IN ( 'VBBK','VBBP' )
+*    AND tdspras = @sy-langu
+*    AND tdid LIKE 'Z%'
+*    ORDER BY tdobject,tdid
+*    INTO TABLE @DATA(lt_ttxit)
+*    .
   SELECT
-    *
-    FROM ttxit
-    WHERE tdobject IN ( 'VBBK','VBBP' )
-    AND tdspras = @sy-langu
-    AND tdid LIKE 'Z%'
-    ORDER BY tdobject,tdid
-    INTO TABLE @DATA(lt_ttxit)
-    .
+    ttxit~*
+    FROM tvak
+    JOIN ttxern ON tvak~txtgr = ttxern~txtgr
+    JOIN ttxit ON ttxern~tdid = ttxit~tdid AND ttxern~tdobject = ttxit~tdobject
+    WHERE tvak~auart = @data-auart
+    AND ttxern~tdobject IN ( 'VBBK','VBBP' )
+    AND ttxern~tdid LIKE 'Z%'
+    AND ttxit~tdspras = @sy-langu
+    ORDER BY ttxit~tdobject,ttxit~tdid
+    INTO TABLE @DATA(lt_ttxit).
+
   " 数据校验  24.09.2024 15:18:51 by kkw
   checkinitial data-new_contractid       'CRM合同ID'            .
   checkinitial data-bstkd       '客户参考'            .
@@ -147,7 +160,7 @@ FUNCTION zfm_crm_so.
       ENDIF.
     ENDIF.
   ENDLOOP.
-  IF data-items IS INITIAL.
+  IF action NE 'S' AND data-items IS INITIAL.
     fillmsg 'E' '合同明细不能为空'.
   ENDIF.
   LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>) GROUP BY ( new_contractdetailid = <item>-new_contractdetailid
@@ -297,29 +310,6 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ENDIF.
 
-      checkinitial data-new_contractid       'CRM合同ID'            .
-      checkinitial data-bstkd       '客户参考'            .
-      checkinitial data-auart       '销售凭证类型'          .
-      checkinitial data-kunnr_we    '售达方'             .
-      checkinitial data-kunnr_ag    '送达方'             .
-      checkinitial data-vkorg       '销售组织'            .
-      checkinitial data-vtweg       '分销渠道'            .
-      checkinitial data-prsdt       '凭证日期'            .
-      checkinitial data-guebg       '有效期自'            .
-      checkinitial data-gueen       '有效期至'            .
-      checkinitial data-zhtyf       '合同月份'            .
-      checkinitial data-spart       '产品组'             .
-      checkinitial data-zhwlx       '货物类型'            .
-      checkinitial data-vkbur       '销售办事处'           .
-      checkinitial data-vkgrp       '销售组'             .
-      checkinitial data-waerk       '凭证货币'            .
-      checkinitial data-kursk       '汇率'              .
-      checkinitial data-zterm       '付款条件'            .
-      checkinitial data-zhtjgfs     '合同加工方式'          .
-      checkinitial data-zdjbl       '定金比例'            .
-      checkinitial data-zisdxs      '销售类型'            .
-      checkinitial data-zcpyt       '产品用途'            .
-
       "补0
       PERFORM addzero(zpubform) CHANGING data-kunnr_we.
       PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
@@ -327,65 +317,6 @@ FUNCTION zfm_crm_so.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
-      LOOP AT data-items ASSIGNING <item>.
-*        mes = '第' && sy-tabix && '行,' && '物料'           .
-*        checkinitial <item>-matnr mes.
-        mes = '第' && sy-tabix && '行,' && '品名'           .
-        checkinitial <item>-groes mes.
-        mes = '第' && sy-tabix && '行,' && 'CRM合同明细ID'           .
-        checkinitial <item>-new_contractdetailid mes.
-        mes = '第' && sy-tabix && '行,' && '厚度'           .
-        checkinitial <item>-houdu mes.
-        mes = '第' && sy-tabix && '行,' && '宽度'           .
-        checkinitial <item>-width mes.
-        mes = '第' && sy-tabix && '行,' && '材质'           .
-        checkinitial <item>-caizhi mes.
-        mes = '第' && sy-tabix && '行,' && '工厂'           .
-        checkinitial <item>-werks mes.
-        mes = '第' && sy-tabix && '行,' && '销售单位'         .
-        checkinitial <item>-vrkme mes.
-        mes = '第' && sy-tabix && '行,' && '订单数量'         .
-        checkinitial <item>-kwmeng mes.
-        mes = '第' && sy-tabix && '行,' && '价格'           .
-        checkinitial <item>-kbetr mes.
-        mes = '第' && sy-tabix && '行,' && '税率'           .
-        checkinitial <item>-mwskz mes.
-
-*单位转换
-        CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
-          EXPORTING
-            input          = <item>-vrkme
-            language       = sy-langu
-          IMPORTING
-            output         = <item>-vrkme
-          EXCEPTIONS
-            unit_not_found = 1
-            OTHERS         = 2.
-
-*        SELECT SINGLE
-*          matnr
-*          INTO @DATA(matnr)
-*          FROM mara
-*          WHERE matnr = @<item>-matnr
-*          .
-*        SELECT SINGLE
-*          meinh
-*          INTO @DATA(meinh)
-*          FROM marm
-*          WHERE matnr = @<item>-matnr
-*          AND meinh = @<item>-vrkme
-*          .
-*        IF matnr IS NOT INITIAL AND meinh IS INITIAL.
-*          CLEAR mes.
-*          PERFORM addunit USING <item>-matnr <item>-vrkme CHANGING mess.
-*          IF mess+0(1) = 'E'.
-*            mes = '第' && sy-tabix && '行，物料：' && <item>-matnr && '单位:' && <item>-vrkme && '扩充失败！:' && mess.
-*            rtmsg = mes.
-*            fillmsg 'E' rtmsg.
-*          ENDIF.
-*        ENDIF.
-*        CLEAR :matnr,meinh.
-      ENDLOOP.
 
       CLEAR  : sales_header_in        .
       CLEAR  : sales_header_inx       .
@@ -432,26 +363,6 @@ FUNCTION zfm_crm_so.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
       extensionin+30(960) = wa_extk.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART1.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+240
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART2.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+480
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART3.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+720
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART4.
       APPEND extensionin.
       CLEAR:extensionin.
       PERFORM setbapix USING wa_extk CHANGING wa_extkx.
@@ -500,9 +411,13 @@ FUNCTION zfm_crm_so.
       posnr = 0 .
       LOOP AT data-items ASSIGNING <item> .
         CLEAR:sales_items_in,sales_items_inx,sales_schedules_in,sales_schedules_inx .
-        ADD 10 TO posnr.
+        IF <item>-posnr IS NOT INITIAL.
+          posnr = <item>-posnr.
+        ELSE.
+          ADD 10 TO posnr.
+        ENDIF.
         <item>-posnr = posnr.
-        sales_items_in-itm_number     = posnr. "使用ERP给的行号
+        sales_items_in-itm_number     = posnr.
         sales_items_in-material       = <item>-matnr.
         PERFORM addzero(zpubform) CHANGING sales_items_in-material.
 *        sales_items_in-prc_group2     = <item>-mvgr2.
@@ -647,92 +562,11 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ENDIF.
     WHEN 'U'.
-      checkinitial data-bstkd       '客户参考'            .
-      checkinitial data-auart       '销售凭证类型'          .
-      checkinitial data-kunnr_we    '售达方'             .
-      checkinitial data-kunnr_ag    '送达方'             .
-      checkinitial data-vkorg       '销售组织'            .
-      checkinitial data-vtweg       '分销渠道'            .
-      checkinitial data-prsdt       '凭证日期'            .
-      checkinitial data-guebg       '有效期自'            .
-      checkinitial data-gueen       '有效期至'            .
-      checkinitial data-zhtyf       '合同月份'            .
-      checkinitial data-spart       '产品组'             .
-      checkinitial data-zhwlx       '货物类型'            .
-      checkinitial data-vkbur       '销售办事处'           .
-      checkinitial data-vkgrp       '销售组'             .
-      checkinitial data-waerk       '凭证货币'            .
-      checkinitial data-kursk       '汇率'              .
-      checkinitial data-zterm       '付款条件'            .
-      checkinitial data-zhtjgfs     '合同加工方式'          .
-      checkinitial data-zdjbl       '定金比例'            .
-      checkinitial data-zisdxs      '销售类型'            .
-      checkinitial data-zcpyt       '产品用途'            .
 
       "补0
       PERFORM addzero(zpubform) CHANGING data-kunnr_we.
       PERFORM addzero(zpubform) CHANGING data-kunnr_we.
       PERFORM addzero(zpubform) CHANGING data-vbeln.
-
-      IF data-items IS INITIAL.
-        fillmsg 'E' '合同明细不能为空'.
-      ENDIF.
-      LOOP AT data-items ASSIGNING <item>.
-*        mes = '第' && sy-tabix && '行,' && '物料'           .
-*        checkinitial <item>-matnr mes.
-        mes = '第' && sy-tabix && '行,' && '品名'           .
-        checkinitial <item>-groes mes.
-        mes = '第' && sy-tabix && '行,' && '厚度'           .
-        checkinitial <item>-houdu mes.
-        mes = '第' && sy-tabix && '行,' && '宽度'           .
-        checkinitial <item>-width mes.
-        mes = '第' && sy-tabix && '行,' && '材质'           .
-        checkinitial <item>-caizhi mes.
-        mes = '第' && sy-tabix && '行,' && '工厂'           .
-        checkinitial <item>-werks mes.
-        mes = '第' && sy-tabix && '行,' && '销售单位'         .
-        checkinitial <item>-vrkme mes.
-        mes = '第' && sy-tabix && '行,' && '订单数量'         .
-        checkinitial <item>-kwmeng mes.
-        mes = '第' && sy-tabix && '行,' && '价格'           .
-        checkinitial <item>-kbetr mes.
-        mes = '第' && sy-tabix && '行,' && '税率'           .
-        checkinitial <item>-mwskz mes.
-
-*单位转换
-        CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
-          EXPORTING
-            input          = <item>-vrkme
-            language       = sy-langu
-          IMPORTING
-            output         = <item>-vrkme
-          EXCEPTIONS
-            unit_not_found = 1
-            OTHERS         = 2.
-*        SELECT SINGLE
-*          matnr
-*          INTO @DATA(matnr)
-*          FROM mara
-*          WHERE matnr = @<item>-matnr
-*          .
-*        SELECT SINGLE
-*          meinh
-*          INTO @DATA(meinh)
-*          FROM marm
-*          WHERE matnr = @<item>-matnr
-*          AND meinh = @<item>-vrkme
-*          .
-*        IF matnr IS NOT INITIAL AND meinh IS INITIAL.
-*          CLEAR mes.
-*          PERFORM addunit USING <item>-matnr <item>-vrkme CHANGING mess.
-*          IF mess+0(1) = 'E'.
-*            mes = '第' && sy-tabix && '行，物料：' && <item>-matnr && '单位:' && <item>-vrkme && '扩充失败！:' && mess.
-*            rtmsg = mes.
-*            fillmsg 'E' rtmsg.
-*          ENDIF.
-*        ENDIF.
-*        CLEAR :matnr,meinh.
-      ENDLOOP.
 
       CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,
       order_header,order_headerx,order_text,conditions_in,conditions_inx,subrc.
@@ -793,26 +627,6 @@ FUNCTION zfm_crm_so.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
       extensionin+30(960) = wa_extk.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART1.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+240
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART2.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+480
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART3.
-*      CALL METHOD CL_ABAP_CONTAINER_UTILITIES=>FILL_CONTAINER_C
-*        EXPORTING
-*          IM_VALUE     = WA_EXTK+720
-*        IMPORTING
-*          EX_CONTAINER = EXTENSIONIN-VALUEPART4.
       APPEND extensionin.
       CLEAR:extensionin.
       PERFORM setbapix USING wa_extk CHANGING wa_extkx.
@@ -863,30 +677,20 @@ FUNCTION zfm_crm_so.
 
       SORT it_vbap BY bstkd posnr.
       LOOP AT data-items ASSIGNING <item> .
-        "洁净 虚拟物料 不参于更新
-        " modify 20230721 by hanwq
-*        IF <item>-matnr IN s_matnr.
-*          CONTINUE.
-*        ENDIF.
-*        IF <item>-uepos IS NOT INITIAL.
-*          "下层行项目 且 上层行项目更改物料 则 删除 ，不更新 IT_VBAP-ZNODEL
-*          READ TABLE it_vbap WITH KEY posnr = <item>-uepos zmatnr = 'X'.
-*          IF sy-subrc = 0 .
-*            CONTINUE.
-*          ENDIF.
-*        ENDIF.
+        CLEAR:order_item_in, order_item_inx, schedule_lines,schedule_linesx,wa_extp,wa_extpx.
         READ TABLE it_vbap WITH KEY bstkd = data-bstkd posnr = <item>-posnr BINARY SEARCH.
         IF sy-subrc = 0 .
+          tabix = sy-tabix.
           "更新未被删除标志
           it_vbap-znodel = 'X'.
-          MODIFY it_vbap INDEX sy-tabix TRANSPORTING znodel.
+          MODIFY it_vbap INDEX tabix TRANSPORTING znodel.
 
-          CLEAR:order_item_in, order_item_inx, schedule_lines,schedule_linesx,wa_extp,wa_extpx.
+
           order_item_in-itm_number  = it_vbap-posnr.
           order_item_inx-itm_number = it_vbap-posnr.
           IF <item>-matnr <> it_vbap-matnr OR it_vbap-pstyv <> <item>-pstyv OR it_vbap-werks <> <item>-werks."项目类别.
             it_vbap-zmatnr = 'X'.
-            MODIFY it_vbap INDEX sy-tabix TRANSPORTING zmatnr.
+            MODIFY it_vbap INDEX tabix TRANSPORTING zmatnr.
             order_item_inx-updateflag = 'U'.
             APPEND: order_item_in,order_item_inx.
           ELSE.
@@ -1094,22 +898,8 @@ FUNCTION zfm_crm_so.
           APPEND:conditions_in,conditions_inx.
         ENDIF.
       ENDLOOP.
-*      "先删除 行项目WBS号再删除
-*      LOOP AT IT_VBAP WHERE ZNODEL = ''.
-*        CLEAR:ORDER_ITEM_IN, ORDER_ITEM_INX.
-*        ORDER_ITEM_IN-ITM_NUMBER  = IT_VBAP-POSNR.
-*        ORDER_ITEM_IN-WBS_ELEM    = ''.
-*        PERFORM SETBAPIX USING ORDER_ITEM_IN CHANGING ORDER_ITEM_INX.
-*        ORDER_ITEM_INX-UPDATEFLAG  = 'U'.
-*        ORDER_ITEM_INX-WBS_ELEM    = 'X'.
-*        APPEND: ORDER_ITEM_IN,ORDER_ITEM_INX.
-*      ENDLOOP.
+
       LOOP AT it_vbap WHERE znodel = ''.
-        "洁净 虚拟物料 不参于更新
-        " modify 20230721 by hanwq
-*        IF it_vbap-matnr IN s_matnr.
-*          CONTINUE.
-*        ENDIF.
         CLEAR:order_item_in, order_item_inx.
         order_item_in-itm_number  = it_vbap-posnr.
         PERFORM setbapix USING order_item_in CHANGING order_item_inx.

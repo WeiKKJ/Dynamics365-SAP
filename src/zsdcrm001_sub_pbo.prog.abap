@@ -279,7 +279,7 @@ FORM repo_init_simple .
 
 * Catch double clic to open query
   ls_event-eventid = cl_gui_simple_tree=>eventid_node_double_click.
-  ls_event-appl_event = abap_false. " no PAI if event occurs
+  ls_event-appl_event = abap_true. " no PAI if event occurs
   APPEND ls_event TO lt_event.
 
   CALL METHOD o_tree_repository->set_registered_events

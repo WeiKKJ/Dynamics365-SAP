@@ -83,5 +83,7 @@ DATA:BEGIN OF wa_domdes,
 DATA:it_f4      TYPE  lvc_t_f4,
      wa_f4      TYPE  lvc_s_f4,
      return_tab TYPE ddshretval OCCURS 0.
+DATA:ret2 TYPE TABLE OF bapiret2,
+     msg  TYPE bapi_msg.
 
 FIELD-SYMBOLS:<fs> TYPE any.

@@ -2459,6 +2459,14 @@
       <ICON_ID>@2Y@</ICON_ID>
       <FUN_TEXT>第一页</FUN_TEXT>
      </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>SO</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>处理合同</FUN_TEXT>
+      <ICON_TEXT>处理合同</ICON_TEXT>
+      <INFO_TEXT>处理合同</INFO_TEXT>
+     </RSMPE_FUNT>
     </FUN>
     <MEN>
      <RSMPE_MEN>
@@ -3087,6 +3095,12 @@
       <NO>30</NO>
       <PFNO>21</PFNO>
      </RSMPE_BUT>
+     <RSMPE_BUT>
+      <PFK_CODE>000002</PFK_CODE>
+      <CODE>0001</CODE>
+      <NO>01</NO>
+      <PFNO>21</PFNO>
+     </RSMPE_BUT>
     </BUT>
     <PFK>
      <RSMPE_PFK>
@@ -3331,6 +3345,12 @@
      </RSMPE_PFK>
      <RSMPE_PFK>
       <CODE>000002</CODE>
+      <PFNO>21</PFNO>
+      <FUNCODE>SO</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000002</CODE>
       <PFNO>71</PFNO>
       <FUNCODE>%SC</FUNCODE>
       <FUNNO>001</FUNNO>
@@ -3420,6 +3440,10 @@
      <RSMPE_STAF>
       <STATUS>STA900</STATUS>
       <FUNCTION>P--</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STA900</STATUS>
+      <FUNCTION>SO</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STD_FULL</STATUS>

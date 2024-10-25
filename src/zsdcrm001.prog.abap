@@ -57,11 +57,99 @@ FORM getdata.
     FROM ztcrm_so_head AS z
     LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
     LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+    WHERE EXISTS ( SELECT * FROM ztcrm_so_item WHERE new_contractid = z~new_contractid AND action NE '' )
     INTO CORRESPONDING FIELDS OF TABLE @gt_out.
   IF gt_out IS INITIAL.
     MESSAGE s000(oo) WITH '无数据'.
     EXIT.
   ENDIF.
+  SELECT
+    domname,
+    domvalue_l,
+    ddtext
+    FROM dd07t
+    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX' )
+    AND ddlanguage = @sy-langu
+    AND as4local = 'A'
+    ORDER BY domname,domvalue_l
+    INTO TABLE @lt_domdes
+    .
+
+  SELECT vkorg,vtext
+    FROM tvkot
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkot).
+  SELECT vtweg,vtext
+    FROM tvtwt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvtwt).
+  SELECT vkbur,bezei
+    FROM tvkbt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkbt).
+  SELECT vkgrp,bezei
+    FROM tvgrt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvgrt).
+  SELECT spart,vtext
+    FROM tspat
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tspat).
+  SELECT kdgrp,ktext
+    FROM t151t
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_t151t).
+  SELECT zid,zname
+    FROM ztsd226
+    FOR ALL ENTRIES IN @gt_out
+    WHERE zid = @gt_out-province
+    OR zid = @gt_out-city
+    OR zid = @gt_out-county
+    INTO TABLE @DATA(lt_226).
+  LOOP AT gt_out INTO gs_out.
+    getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
+    getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
+    getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
+    getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
+    getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
+    READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
+    IF sy-subrc EQ 0.
+      gs_out-vkorg_des = wa1-vtext.
+    ENDIF.
+    READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
+    IF sy-subrc EQ 0.
+      gs_out-vtweg_des = wa2-vtext.
+    ENDIF.
+    READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
+    IF sy-subrc EQ 0.
+      gs_out-vkbur_des = wa3-bezei.
+    ENDIF.
+    READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
+    IF sy-subrc EQ 0.
+      gs_out-vkgrp_des = wa4-bezei.
+    ENDIF.
+    READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
+    IF sy-subrc EQ 0.
+      gs_out-spart_des = wa5-vtext.
+    ENDIF.
+    READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
+    IF sy-subrc EQ 0.
+      gs_out-kdgrp_des = wa6-ktext.
+    ENDIF.
+    READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
+    IF sy-subrc EQ 0.
+      gs_out-province_des = wa226-zname.
+    ENDIF.
+    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
+    IF sy-subrc EQ 0.
+      gs_out-city_des = wa226-zname.
+    ENDIF.
+    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
+    IF sy-subrc EQ 0.
+      gs_out-county_des = wa226-zname.
+    ENDIF.
+    MODIFY gt_out FROM gs_out.
+  ENDLOOP.
 ENDFORM.
 
 *---------------------------------------------------------------------*
@@ -115,7 +203,8 @@ FORM outdata.
               dfies_tab-fieldname dfies_tab-tabname dfies_tab-fieldname dfies_tab-fieldtext.
     ENDCASE.
   ENDLOOP.
-
+  PERFORM catset TABLES gt_fldct USING:
+        'VKGRP_DES'  '' '' '销售组描述'   .
   CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY_LVC'
     EXPORTING
       it_fieldcat_lvc          = gt_fldct
@@ -125,8 +214,32 @@ FORM outdata.
       i_callback_program       = gv_repid
       i_callback_user_command  = 'USER_COMMAND'
       i_callback_pf_status_set = 'SET_STATUS'
+      i_callback_top_of_page   = 'TOP_OF_PAGEA'
     TABLES
       t_outtab                 = gt_out.
+ENDFORM.
+
+*抬头框
+FORM top_of_pagea.
+  DATA:it_list_commentary TYPE slis_t_listheader,
+       wa_list_commentary TYPE slis_listheader,
+       sjtms              TYPE i.
+  CLEAR:wa_list_commentary,sjtms.
+  REFRESH:it_list_commentary.
+
+  sjtms = lines( gt_out ).
+
+  wa_list_commentary-typ = 'S'.
+  wa_list_commentary-key = '正常发货单派车条目数:'.
+  wa_list_commentary-info = sjtms.
+  APPEND wa_list_commentary TO it_list_commentary.
+
+
+  CALL FUNCTION 'REUSE_ALV_COMMENTARY_WRITE'
+    EXPORTING
+      it_list_commentary = it_list_commentary[]
+    EXCEPTIONS
+      OTHERS             = 1.
 ENDFORM.
 
 *&---------------------------------------------------------------------*
@@ -221,7 +334,7 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM getitems .
   DATA:posnr TYPE posnr.
-  CLEAR l_ref_alv.
+  CLEAR:l_ref_alv,msg.
   CALL FUNCTION 'GET_GLOBALS_FROM_SLVC_FULLSCR'
     IMPORTING
       e_grid = l_ref_alv.
@@ -240,10 +353,16 @@ FORM getitems .
     FROM ztcrm_so_item
     INTO CORRESPONDING FIELDS OF TABLE @gt_item
     WHERE new_contractid = @gs_out-new_contractid
+    AND action NE ''
     .
   IF gt_item IS INITIAL.
     MESSAGE '无明细数据' TYPE 'E'.
   ENDIF.
+  PERFORM ezsdr IN PROGRAM saplzfg_crm USING '' gs_out-new_contractid CHANGING msg.
+  IF msg IS NOT INITIAL.
+    MESSAGE msg TYPE 'E'.
+  ENDIF.
+
   SELECT
     ttxit~*
     FROM tvak
@@ -282,9 +401,14 @@ FORM getitems .
     INTO TABLE @DATA(lt_mara)
     .
 *  SORT lt_mara BY matnr.
-
+  SELECT MAX( posnr ) FROM vbap WHERE vbeln = @gs_out-vbeln INTO @posnr.
   LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<gt_item>).
-    ADD 10 TO posnr.
+    IF <gt_item>-posnr IS INITIAL.
+      ADD 10 TO posnr.
+    ELSE.
+      posnr = <gt_item>-posnr.
+    ENDIF.
+
     <gt_item>-posnr = posnr.
     READ TABLE lt_mara ASSIGNING FIELD-SYMBOL(<lt_mara>) WITH KEY mara-chandi = <gt_item>-chandi
     mara-caizhi = <gt_item>-caizhi mara-width = <gt_item>-width mara-houdu = <gt_item>-houdu mara-yl2 = <gt_item>-yl2
@@ -315,86 +439,28 @@ FORM getitems .
   ELSE.
     gs_out-state = '已处理'.
   ENDIF.
-  SELECT
-    domname,
-    domvalue_l,
-    ddtext
-    FROM dd07t
-    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX' )
-    AND ddlanguage = @sy-langu
-    AND as4local = 'A'
-    ORDER BY domname,domvalue_l
-    INTO TABLE @lt_domdes
-    .
-  getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
-  getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
-  getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
-  getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
-  getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
-  SELECT vkorg,vtext
-    FROM tvkot
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvkot).
-  SELECT vtweg,vtext
-    FROM tvtwt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvtwt).
-  SELECT vkbur,bezei
-    FROM tvkbt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvkbt).
-  SELECT vkgrp,bezei
-    FROM tvgrt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvgrt).
-  SELECT spart,vtext
-    FROM tspat
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tspat).
-  SELECT kdgrp,ktext
-    FROM t151t
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_t151t).
-  SELECT zid,zname
-    FROM ztsd226
-    WHERE zid IN ( @gs_out-province,@gs_out-city,@gs_out-county )
-    INTO TABLE @DATA(lt_226).
-  READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
-  IF sy-subrc EQ 0.
-    gs_out-vkorg_des = wa1-vtext.
-  ENDIF.
-  READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
-  IF sy-subrc EQ 0.
-    gs_out-vtweg_des = wa2-vtext.
-  ENDIF.
-  READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
-  IF sy-subrc EQ 0.
-    gs_out-vkbur_des = wa3-bezei.
-  ENDIF.
-  READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
-  IF sy-subrc EQ 0.
-    gs_out-vkgrp_des = wa4-bezei.
-  ENDIF.
-  READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
-  IF sy-subrc EQ 0.
-    gs_out-spart_des = wa5-vtext.
-  ENDIF.
-  READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
-  IF sy-subrc EQ 0.
-    gs_out-kdgrp_des = wa6-ktext.
-  ENDIF.
-  READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
-  IF sy-subrc EQ 0.
-    gs_out-province_des = wa226-zname.
-  ENDIF.
-  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
-  IF sy-subrc EQ 0.
-    gs_out-city_des = wa226-zname.
-  ENDIF.
-  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
-  IF sy-subrc EQ 0.
-    gs_out-county_des = wa226-zname.
-  ENDIF.
+
+  LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
+    READ TABLE gt_longtext_im INTO gs_longtext_im WITH KEY sapno = gs_out-new_contractid tdid = <lt_ttxit>-tdid BINARY SEARCH.
+    IF sy-subrc EQ 0.
+      ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE gs_out TO FIELD-SYMBOL(<tdidv>).
+      IF sy-subrc EQ 0.
+        <tdidv> = gs_longtext_im-longtext.
+      ENDIF.
+    ENDIF.
+  ENDLOOP.
+  LOOP AT gt_item ASSIGNING <gt_item>.
+    LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
+      DATA(sapno) = CONV ztlongtext-sapno( |{ <gt_item>-new_contractid }{ <gt_item>-new_contractdetailid }| ).
+      READ TABLE gt_longtext_im INTO gs_longtext_im WITH KEY sapno = sapno tdid = <lt_ttxit>-tdid BINARY SEARCH.
+      IF sy-subrc EQ 0.
+        ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <gt_item> TO FIELD-SYMBOL(<tdidev>).
+        IF sy-subrc EQ 0.
+          <tdidev> = gs_longtext_im-longtext.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+  ENDLOOP.
   MODIFY TABLE gt_out FROM gs_out.
   PERFORM fillfldct.
   CALL SCREEN 900.
