@@ -13,9 +13,16 @@ FUNCTION zfm_crm_so.
   zfmdatasave1 'ZFM_CRM_SO'.
   zfmdatasave2 'B'.
   COMMIT WORK.
-  IF data IS INITIAL OR data-items IS INITIAL.
-    fillmsg 'E' '请传入抬头和明细数据后再调用本接口'.
+  IF action NE 'S'.
+    IF data IS INITIAL.
+      fillmsg 'E' '请传入抬头数据后再调用本接口'.
+    ENDIF.
+  ELSE.
+    IF data IS INITIAL OR data-items IS INITIAL.
+      fillmsg 'E' '请传入抬头和明细数据后再调用本接口'.
+    ENDIF.
   ENDIF.
+
   CLEAR:rtype,rtmsg,vbeln.
 
   TYPES:BEGIN OF zsvbap,
@@ -35,8 +42,6 @@ FUNCTION zfm_crm_so.
        order_header_in      TYPE bapisdh1,
        order_header_inx     TYPE bapisdh1x,
        salesdocument_ex     TYPE bapivbeln-vbeln,
-*        SALES_TEXT           TYPE TABLE OF BAPISDTEXT WITH HEADER LINE,
-       it_knvp              TYPE TABLE OF knvp WITH HEADER LINE,
        return               TYPE STANDARD TABLE OF bapiret2 WITH HEADER LINE,
        sales_items_in       TYPE STANDARD TABLE OF bapisditm WITH HEADER LINE,
        sales_items_inx      TYPE STANDARD TABLE OF bapisditmx WITH HEADER LINE,
@@ -67,52 +72,21 @@ FUNCTION zfm_crm_so.
        wa_extp  TYPE bape_vbap,
        wa_extpx TYPE bape_vbapx,
        subrc    TYPE sy-subrc,
-       mess     TYPE char200,
        mes      TYPE string.
   DATA:posnr TYPE vbap-posnr.
 **********************************
   DATA:wa_head TYPE ztcrm_so_head,
        lt_item TYPE TABLE OF ztcrm_so_item.
 
-  RANGES:s_zcolname FOR ztsd203-zcolname.
-  RANGES:s_matnr    FOR vbap-matnr.
   PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
+
   PERFORM domain_value_check USING action CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
-
-  CLEAR:s_zcolname[],s_matnr[].
-  CLEAR:s_zcolname.s_zcolname = 'IEQJQJ'. APPEND s_zcolname.
-  CLEAR:s_zcolname.s_zcolname = 'IEQKD' . APPEND s_zcolname.
-  CLEAR:s_zcolname.s_zcolname = 'IEQXG' . APPEND s_zcolname.
-
-  SELECT
-     *
-    FROM ztsd203
-    WHERE ztabname =  'MATNR'
-    AND  zcolname IN @s_zcolname
-    ORDER BY zseloption
-    INTO TABLE @DATA(it_ztsd203)
-     .
-  LOOP AT it_ztsd203 INTO DATA(wa_ztsd203).
-    CLEAR:s_matnr.
-    s_matnr(3) = 'IEQ'.
-    s_matnr-low = wa_ztsd203-zseloption.
-    COLLECT s_matnr.
-  ENDLOOP.
-*  SELECT
-*    *
-*    FROM ttxit
-*    WHERE tdobject IN ( 'VBBK','VBBP' )
-*    AND tdspras = @sy-langu
-*    AND tdid LIKE 'Z%'
-*    ORDER BY tdobject,tdid
-*    INTO TABLE @DATA(lt_ttxit)
-*    .
   SELECT
     ttxit~*
     FROM tvak
@@ -124,13 +98,15 @@ FUNCTION zfm_crm_so.
     AND ttxit~tdspras = @sy-langu
     ORDER BY ttxit~tdobject,ttxit~tdid
     INTO TABLE @DATA(lt_ttxit).
-
+  "补0
+  PERFORM addzero(zpubform) CHANGING data-kunnr_we.
+  PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
   " 数据校验  24.09.2024 15:18:51 by kkw
   checkinitial data-new_contractid       'CRM合同ID'            .
   checkinitial data-bstkd       '客户参考'            .
   checkinitial data-auart       '销售凭证类型'          .
-  checkinitial data-kunnr_we    '售达方'             .
-  checkinitial data-kunnr_ag    '送达方'             .
+  checkinitial data-kunnr_we    '送达方'             .
+  checkinitial data-kunnr_ag    '售达方'             .
   checkinitial data-vkorg       '销售组织'            .
   checkinitial data-vtweg       '分销渠道'            .
   checkinitial data-prsdt       '凭证日期'            .
@@ -160,9 +136,7 @@ FUNCTION zfm_crm_so.
       ENDIF.
     ENDIF.
   ENDLOOP.
-  IF action NE 'S' AND data-items IS INITIAL.
-    fillmsg 'E' '合同明细不能为空'.
-  ENDIF.
+
   LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>) GROUP BY ( new_contractdetailid = <item>-new_contractdetailid
     index = GROUP INDEX size = GROUP SIZE
      ) ASSIGNING FIELD-SYMBOL(<group>).
@@ -219,6 +193,7 @@ FUNCTION zfm_crm_so.
 
   CASE action.
     WHEN 'S'.
+
       " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
       SELECT
         vbak~vbeln,
@@ -309,52 +284,51 @@ FUNCTION zfm_crm_so.
         rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
         fillmsg 'E' rtmsg.
       ENDIF.
-
-      "补0
-      PERFORM addzero(zpubform) CHANGING data-kunnr_we.
-      PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
-
+      SELECT
+        COUNT( DISTINCT vbeln ) AS countvn
+        FROM vbak
+        WHERE new_contractid = @data-new_contractid
+        INTO @DATA(countvn)
+      .
+      IF countvn NE 0.
+        rtmsg = |CRM合同ID[{ data-new_contractid }]存在于[{ countvn }]个合同！！！|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
 
-      CLEAR  : sales_header_in        .
-      CLEAR  : sales_header_inx       .
-      CLEAR  : salesdocument_ex       .
-      CLEAR  : return                 ,    return[]               .
-      CLEAR  : sales_items_in         ,    sales_items_in[]       .
-      CLEAR  : sales_items_inx        ,    sales_items_inx[]      .
-      CLEAR  : sales_partners         ,    sales_partners[]       .
-      CLEAR  : sales_schedules_in     ,    sales_schedules_in[]   .
-      CLEAR  : sales_schedules_inx    ,    sales_schedules_inx[]  .
-      CLEAR  : sales_conditions_in    ,    sales_conditions_in[]  .
-      CLEAR  : sales_conditions_inx   ,    sales_conditions_inx[] .
-      CLEAR  : order_text             ,    order_text[]           .
-      CLEAR  : extensionin            ,    extensionin[]          .
+      CLEAR: sales_header_in        .
+      CLEAR: sales_header_inx       .
+      CLEAR: salesdocument_ex       .
+      CLEAR: return                 ,    return[]               .
+      CLEAR: sales_items_in         ,    sales_items_in[]       .
+      CLEAR: sales_items_inx        ,    sales_items_inx[]      .
+      CLEAR: sales_partners         ,    sales_partners[]       .
+      CLEAR: sales_schedules_in     ,    sales_schedules_in[]   .
+      CLEAR: sales_schedules_inx    ,    sales_schedules_inx[]  .
+      CLEAR: sales_conditions_in    ,    sales_conditions_in[]  .
+      CLEAR: sales_conditions_inx   ,    sales_conditions_inx[] .
+      CLEAR: order_text             ,    order_text[]           .
+      CLEAR: extensionin            ,    extensionin[]          .
 
       "抬头
 *******************************************************20230214
       sales_header_in-doc_type   = data-auart ."订单类型
       sales_header_in-sales_org  = data-vkorg ."销售组织
-*      sales_header_in-ord_reason = data-augru ."补差原因
       sales_header_in-purch_no_c = data-bstkd ."外部合同号
       sales_header_in-division   = data-spart ."产品组
       sales_header_in-sales_grp  = data-vkgrp ."销售组
       sales_header_in-distr_chan = data-vtweg ."分销渠道
       sales_header_in-sales_off  = data-vkbur ."销售办事处
-*      sales_header_in-wbs_elem   = data-posid.
       sales_header_in-currency   = data-waerk.
       sales_header_in-doc_date   = data-prsdt."凭证日期 (接收/发送日期)
-*      IF data-bstkd_e IS NOT INITIAL.
-*        sales_header_in-purch_no_s  = data-bstkd_e."运达方的采购订单编号
-*      ENDIF.
       sales_header_in-incoterms1 = data-inco1."*  国际贸易条款（第 1 部分）
       sales_header_in-incoterms2 = data-inco2_l."*  国际贸易条款（第 2 部分）
       sales_header_in-price_date = data-prsdt.
       sales_header_in-ct_valid_f = data-guebg.
       sales_header_in-ct_valid_t = data-gueen.
       sales_header_in-cust_group = data-kdgrp.
-*      sales_header_in-price_grp  = data-kdgrp."客户价格组
       PERFORM setbapix USING sales_header_in CHANGING sales_header_inx.
 
 *增强字段
@@ -367,25 +341,22 @@ FUNCTION zfm_crm_so.
       CLEAR:extensionin.
       PERFORM setbapix USING wa_extk CHANGING wa_extkx.
       extensionin-structure = 'BAPE_VBAKX'.
-      extensionin-valuepart1 = wa_extkx.
+      extensionin+30(960) = wa_extkx.
       APPEND extensionin.
 **********************************
       "合作伙伴
       CLEAR sales_partners.
       sales_partners-partn_role = 'AG'.
       sales_partners-partn_numb = data-kunnr_ag.
-      PERFORM addzero(zpubform) CHANGING sales_partners-partn_numb.
       APPEND sales_partners.
       CLEAR sales_partners.
       sales_partners-partn_role = 'WE'.
       sales_partners-partn_numb = data-kunnr_we.
-      PERFORM addzero(zpubform) CHANGING sales_partners-partn_numb.
       APPEND sales_partners.
 
       LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
         ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE data TO <zlongtext>.
         IF sy-subrc EQ 0.
-          CLEAR:order_text[].
           "切割文本
           CLEAR:text_stream,text_stream[],lines[],lines.
           text_stream-text = <zlongtext>.
@@ -396,7 +367,6 @@ FUNCTION zfm_crm_so.
               itf_text    = lines.
           LOOP AT lines.
             CLEAR:order_text.
-            "抬头备注
             order_text-text_id    = <lt_ttxit>-tdid.
             order_text-langu      = sy-langu.
             order_text-format_col = '*' .
@@ -420,105 +390,69 @@ FUNCTION zfm_crm_so.
         sales_items_in-itm_number     = posnr.
         sales_items_in-material       = <item>-matnr.
         PERFORM addzero(zpubform) CHANGING sales_items_in-material.
-*        sales_items_in-prc_group2     = <item>-mvgr2.
-*        sales_items_in-prc_group3     = <item>-mvgr3.
         sales_items_in-target_qty     = <item>-kwmeng.
         sales_items_in-target_qu      = <item>-vrkme.
         sales_items_in-sales_unit     = <item>-vrkme.
-*        sales_items_in-reason_rej     = <item>-abgru.
-*        sales_items_in-item_categ     = <item>-pstyv."项目类别
-*        sales_items_in-hg_lv_item     = <item>-uepos."上一层项目
-*        IF data-auart = 'ZWM0' OR data-vkorg = '3210'.     "只有外贸允许修改税码 "增加马来西亚公司修改税码逻辑 By Qidawei On 20240805
-*          sales_items_in-tax_class1     = data-zsl.    "税码调整 add by yangyousheng 20221209
-*        ENDIF.
         PERFORM transunit_to_inside(zpubform) CHANGING sales_items_in-target_qu.
         PERFORM transunit_to_inside(zpubform) CHANGING sales_items_in-sales_unit.
-        sales_items_in-plant          =  <item>-werks.
-*        sales_items_in-store_loc      =  <item>-lgort.
-*        sales_items_in-wbs_elem       =  data-posid. "WBS只放抬头
-*        sales_items_in-ref_doc_ca     =  ''. "G
-*        SALES_ITEMS_IN-CURRENCY       = data-WAERK.
+        sales_items_in-plant          = <item>-werks.
+        sales_items_in-currency       = data-waerk.
         PERFORM setbapix USING sales_items_in CHANGING sales_items_inx.
-        APPEND: sales_items_in,sales_items_inx.
+        APPEND:sales_items_in,sales_items_inx.
         "计划行
-        sales_schedules_in-itm_number = posnr ."
-        sales_schedules_in-sched_line = '0001'."
+        sales_schedules_in-itm_number = posnr .
+        sales_schedules_in-sched_line = '0001'.
         sales_schedules_in-req_qty    = <item>-kwmeng.
         sales_schedules_in-req_date   = sy-datum .
-*       SALES_SCHEDULES_IN-REQ_DATE = KETDAT.
         PERFORM setbapix USING sales_schedules_in CHANGING sales_schedules_inx.
         APPEND: sales_schedules_in,sales_schedules_inx.
 
-
 *增强字段
-        CLEAR:wa_extp.
-        CLEAR:extensionin.
+        CLEAR:extensionin,wa_extp.
         MOVE-CORRESPONDING <item> TO wa_extp.
         extensionin-structure = 'BAPE_VBAP'.
-        CALL METHOD cl_abap_container_utilities=>fill_container_c
-          EXPORTING
-            im_value     = wa_extp
-          IMPORTING
-            ex_container = extensionin-valuepart1.
-        CALL METHOD cl_abap_container_utilities=>fill_container_c
-          EXPORTING
-            im_value     = wa_extp+240
-          IMPORTING
-            ex_container = extensionin-valuepart2.
-        CALL METHOD cl_abap_container_utilities=>fill_container_c
-          EXPORTING
-            im_value     = wa_extp+480
-          IMPORTING
-            ex_container = extensionin-valuepart3.
-*        CALL METHOD cl_abap_container_utilities=>fill_container_c
-*          EXPORTING
-*            im_value     = wa_extp+720
-*          IMPORTING
-*            ex_container = extensionin-valuepart4.
+        extensionin+30(960) = wa_extp.
         APPEND extensionin.
-        CLEAR:extensionin ,wa_extpx .
+        CLEAR:extensionin,wa_extpx .
         PERFORM setbapix USING wa_extp CHANGING wa_extpx.
         extensionin-structure = 'BAPE_VBAPX'.
-        extensionin-valuepart1 = wa_extpx.
+        extensionin+30(960) = wa_extpx.
         APPEND extensionin.
-        PERFORM setbapix USING sales_items_in CHANGING sales_items_inx.
-        PERFORM setbapix USING sales_schedules_in CHANGING sales_schedules_inx.
-*        APPEND: SALES_ITEMS_IN,SALES_ITEMS_INX,SALES_SCHEDULES_IN,SALES_SCHEDULES_INX.
 
 *文本
-        "切割文本
-        CLEAR:text_stream,text_stream[],lines[],lines.
-        text_stream-text = <item>-z001.
-        APPEND text_stream.
-        CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-          TABLES
-            text_stream = text_stream
-            itf_text    = lines.
-        LOOP AT lines.
-          CLEAR:order_text.
-          "合同项目备注
-          CLEAR:order_text.
-          order_text-itm_number = posnr.
-          order_text-text_id    = 'Z001'.
-          order_text-langu      = sy-langu .
-          order_text-format_col = '*' .
-          order_text-text_line  = lines-tdline.
-          APPEND order_text.
+        LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
+          ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
+          IF sy-subrc EQ 0.
+            "切割文本
+            CLEAR:text_stream,text_stream[],lines[],lines.
+            text_stream-text = <zlongtext>.
+            APPEND text_stream.
+            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+              TABLES
+                text_stream = text_stream
+                itf_text    = lines.
+            LOOP AT lines.
+              CLEAR:order_text.
+              order_text-itm_number = posnr.
+              order_text-text_id    = <lt_ttxit>-tdid.
+              order_text-langu      = sy-langu .
+              order_text-format_col = '*' .
+              order_text-text_line  = lines-tdline.
+              APPEND order_text.
+            ENDLOOP.
+            UNASSIGN <zlongtext>.
+          ENDIF.
         ENDLOOP.
-        "EDIT BY DONGPZ AT 26.11.2022 13:08:41 价格
         CLEAR:sales_conditions_in,sales_conditions_inx.
         sales_conditions_in-itm_number = posnr.
         sales_conditions_in-cond_type  = 'ZPR0'.
         sales_conditions_in-cond_value = <item>-kbetr.
         sales_conditions_in-cond_p_unt = 1.
         sales_conditions_in-currency   = data-waerk.
-*        SALES_CONDITIONS_IN-CONDVALUE  = <item>-ZQYDJ * <item>-KWMENG.
-*        SALES_CONDITIONS_IN-CURRENCY_2 = data-WAERK.
         PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
         APPEND:sales_conditions_in,sales_conditions_inx.
       ENDLOOP.
 **********************************
-
       SET UPDATE TASK LOCAL.
       CALL FUNCTION 'SD_SALESDOCUMENT_CREATE'
         EXPORTING
@@ -556,24 +490,20 @@ FUNCTION zfm_crm_so.
         rtype = 'S'.
         rtmsg = |创建销售合同成功，单号：[{ salesdocument_ex }]|.
         vbeln = salesdocument_ex.
+        data-vbeln = vbeln.
         fillmsg 'S' rtmsg.
       ELSE.
         PERFORM bapirun(zpubform) USING 'E'.
         fillmsg 'E' rtmsg.
       ENDIF.
     WHEN 'U'.
-
-      "补0
-      PERFORM addzero(zpubform) CHANGING data-kunnr_we.
-      PERFORM addzero(zpubform) CHANGING data-kunnr_we.
-      PERFORM addzero(zpubform) CHANGING data-vbeln.
-
       CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,
       order_header,order_headerx,order_text,conditions_in,conditions_inx,subrc.
       REFRESH:
       order_item_in,order_item_inx,schedule_lines,schedule_linesx,
       order_text,conditions_in,conditions_inx.
-
+      "补0
+      PERFORM addzero(zpubform) CHANGING data-vbeln.
       SELECT
         vbak~vbeln
         vbap~posnr
@@ -596,31 +526,23 @@ FUNCTION zfm_crm_so.
       "抬头
       salesdocument = data-vbeln.
 
-*      order_header-doc_type   = data-auart ."订单类型
       order_header-sales_org  = data-vkorg ."销售组织
-*      order_header-ord_reason = data-augru ."补差原因
       order_header-purch_no_c = data-bstkd ."外部合同号
       order_header-division   = data-spart ."产品组
       order_header-sales_grp  = data-vkgrp ."销售组
       order_header-distr_chan = data-vtweg ."分销渠道
       order_header-sales_off  = data-vkbur ."销售办事处
+      order_header-currency   = data-waerk.
       order_header-doc_date   = data-prsdt."凭证日期 (接收/发送日期)
-      order_header-currency   = data-waerk."货币
+      order_header-incoterms1 = data-inco1."*  国际贸易条款（第 1 部分）
+      order_header-incoterms2 = data-inco2_l."*  国际贸易条款（第 2 部分）
+      order_header-price_date = data-prsdt.
       order_header-ct_valid_f = data-guebg.
       order_header-ct_valid_t = data-gueen.
-
+      order_header-cust_group = data-kdgrp.
+      PERFORM setbapix USING order_header CHANGING order_headerx.
       order_headerx-updateflag = 'U'.
-*      ORDER_HEADERX-DOC_TYPE   = 'X' .
-      order_headerx-sales_org  = 'X' .
-      order_headerx-ord_reason = 'X' .
-      order_headerx-purch_no_c = 'X' .
-      order_headerx-division   = 'X' .
-      order_headerx-sales_grp  = 'X' .
-      order_headerx-distr_chan = 'X' .
-      order_headerx-doc_date   = 'X' .
-      order_headerx-sales_off  = 'X' .
-      order_headerx-ct_valid_f = 'X' .
-      order_headerx-ct_valid_t = 'X' .
+
 *增强字段
       CLEAR wa_extk.
       MOVE-CORRESPONDING data TO wa_extk.
@@ -631,13 +553,12 @@ FUNCTION zfm_crm_so.
       CLEAR:extensionin.
       PERFORM setbapix USING wa_extk CHANGING wa_extkx.
       extensionin-structure = 'BAPE_VBAKX'.
-      extensionin-valuepart1 = wa_extkx.
+      extensionin+30(960) = wa_extkx.
       APPEND extensionin.
 
       LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
         ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE data TO <zlongtext>.
         IF sy-subrc EQ 0.
-          CLEAR:order_text[].
           "切割文本
           CLEAR:text_stream,text_stream[],lines[],lines.
           text_stream-text = <zlongtext>.
@@ -648,7 +569,6 @@ FUNCTION zfm_crm_so.
               itf_text    = lines.
           LOOP AT lines.
             CLEAR:order_text.
-            "抬头备注
             order_text-text_id    = <lt_ttxit>-tdid.
             order_text-langu      = sy-langu.
             order_text-format_col = '*' .
@@ -671,9 +591,8 @@ FUNCTION zfm_crm_so.
       SELECT MAX( vbap~posnr )
         INTO posnr
         FROM vbap
-        INNER JOIN vbkd ON vbkd~vbeln = vbap~vbeln
-        WHERE bstkd = data-bstkd
-        AND vbkd~posnr = '000000'.
+        WHERE vbeln = data-vbeln
+        .
 
       SORT it_vbap BY bstkd posnr.
       LOOP AT data-items ASSIGNING <item> .
@@ -684,105 +603,58 @@ FUNCTION zfm_crm_so.
           "更新未被删除标志
           it_vbap-znodel = 'X'.
           MODIFY it_vbap INDEX tabix TRANSPORTING znodel.
-
-
           order_item_in-itm_number  = it_vbap-posnr.
-          order_item_inx-itm_number = it_vbap-posnr.
-          IF <item>-matnr <> it_vbap-matnr OR it_vbap-pstyv <> <item>-pstyv OR it_vbap-werks <> <item>-werks."项目类别.
-            it_vbap-zmatnr = 'X'.
-            MODIFY it_vbap INDEX tabix TRANSPORTING zmatnr.
-            order_item_inx-updateflag = 'U'.
-            APPEND: order_item_in,order_item_inx.
-          ELSE.
-            order_item_in-target_qu    = <item>-vrkme.
-            order_item_in-sales_unit   = <item>-vrkme.
-*            PERFORM transunit_to_inside(zpubform) CHANGING order_item_in-target_qu.
-*            PERFORM transunit_to_inside(zpubform) CHANGING order_item_in-sales_unit.
-            order_item_inx-target_qu   = 'X' .
-            order_item_inx-sales_unit  = 'X' .
-*            order_item_in-prc_group2  = <item>-mvgr2.
-*            order_item_in-prc_group3  = <item>-mvgr3.
-*            order_item_in-reason_rej  = <item>-abgru.
-*            order_item_in-hg_lv_item  = <item>-uepos."上一层项目
-*            IF data-auart = 'ZWM0' OR data-vkorg = '3210'.     "只有外贸允许修改税码 "增加马来西亚公司修改税码逻辑 By Qidawei On 20240805
-*              order_item_in-tax_class1     = data-zsl.    "税码调整 add by yangyousheng 20221209
-*              order_item_inx-tax_class1  = 'X' . "20221230_likun,修改时因税率变更为空。
-*            ENDIF.
-            order_item_in-target_qty  = <item>-kwmeng.
-*            ORDER_ITEM_IN-PLANT       =  <item>-WERKS.
-
-*          ORDER_ITEM_INX-MATERIAL    = 'X' .
-*            order_item_inx-prc_group2  = 'X' .
-*            order_item_inx-prc_group3  = 'X' .
-*            order_item_inx-hg_lv_item  = 'X' ."上一层项目
-*          ORDER_ITEM_INX-TAX_CLASS1  = 'X' .
-*            order_item_inx-reason_rej  = 'X' .
-            order_item_inx-target_qty  = 'X' .
-*            ORDER_ITEM_INX-PLANT       = 'X' .
-            order_item_inx-updateflag = 'U'.
-            APPEND: order_item_in,order_item_inx.
-            "计划行
-            schedule_lines-itm_number = <item>-posnr.
-            schedule_lines-sched_line = '0001'.
-            schedule_lines-req_qty    = order_item_in-target_qty.
-            schedule_lines-req_date   = sy-datum .
-            PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
-            schedule_linesx-updateflag = 'U'.
-            APPEND:schedule_lines,schedule_linesx.
-          ENDIF.
-
+          order_item_in-material    = <item>-matnr.
+          order_item_in-target_qty  = <item>-kwmeng.
+          order_item_in-target_qu   = <item>-vrkme.
+          order_item_in-sales_unit  = <item>-vrkme.
+          order_item_in-plant       = <item>-werks.
+          order_item_in-currency    = data-waerk.
+          PERFORM setbapix USING order_item_in CHANGING order_item_inx.
+          order_item_inx-updateflag = 'U'.
+          APPEND:order_item_in,order_item_inx.
+          "计划行
+          schedule_lines-itm_number = it_vbap-posnr.
+          schedule_lines-sched_line = '0001'.
+          schedule_lines-req_qty    = <item>-kwmeng.
+          schedule_lines-req_date   = sy-datum .
+          PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
+          schedule_linesx-updateflag = 'U'.
+          APPEND:schedule_lines,schedule_linesx.
 *文本
-          "切割文本
-          CLEAR:text_stream,text_stream[],lines[],lines.
-          text_stream-text = <item>-z001.
-          APPEND text_stream.
-          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-            TABLES
-              text_stream = text_stream
-              itf_text    = lines.
-          LOOP AT lines.
-            CLEAR:order_text.
-            "合同项目备注
-            CLEAR:order_text.
-            order_text-itm_number = posnr.
-            order_text-text_id    = 'Z001'.
-            order_text-langu      = sy-langu .
-            order_text-format_col = '*' .
-            order_text-text_line  = lines-tdline.
-            APPEND order_text.
+          LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
+            ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
+            IF sy-subrc EQ 0.
+              "切割文本
+              CLEAR:text_stream,text_stream[],lines[],lines.
+              text_stream-text = <zlongtext>.
+              APPEND text_stream.
+              CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+                TABLES
+                  text_stream = text_stream
+                  itf_text    = lines.
+              LOOP AT lines.
+                CLEAR:order_text.
+                order_text-itm_number = posnr.
+                order_text-text_id    = <lt_ttxit>-tdid.
+                order_text-langu      = sy-langu .
+                order_text-format_col = '*' .
+                order_text-text_line  = lines-tdline.
+                APPEND order_text.
+              ENDLOOP.
+              UNASSIGN <zlongtext>.
+            ENDIF.
           ENDLOOP.
 *增强字段
-          CLEAR:wa_extp.
+          CLEAR:extensionin,wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
-*          WA_EXTP-VBELN  = data-VBELN.
-          CLEAR:extensionin.
           extensionin-structure = 'BAPE_VBAP'.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp
-            IMPORTING
-              ex_container = extensionin-valuepart1.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp+240
-            IMPORTING
-              ex_container = extensionin-valuepart2.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp+480
-            IMPORTING
-              ex_container = extensionin-valuepart3.
-*          CALL METHOD cl_abap_container_utilities=>fill_container_c
-*            EXPORTING
-*              im_value     = wa_extp+720
-*            IMPORTING
-*              ex_container = extensionin-valuepart4.
-
+          extensionin+30(960) = wa_extp.
           APPEND extensionin.
           CLEAR:extensionin,wa_extpx .
-          PERFORM setbapix_initial USING wa_extp CHANGING wa_extpx.
+          PERFORM setbapix USING wa_extp CHANGING wa_extpx.
           extensionin-structure = 'BAPE_VBAPX'.
-          extensionin-valuepart1 = wa_extpx.
+          extensionin+30(960) = wa_extpx.
           APPEND extensionin.
 
           SELECT SINGLE
@@ -796,94 +668,68 @@ FUNCTION zfm_crm_so.
                 CHANGING conditions_in conditions_inx.
           APPEND:conditions_in,conditions_inx.
         ELSE.
-          ADD 10 TO posnr.
+          IF <item>-posnr IS NOT INITIAL.
+            posnr = <item>-posnr.
+          ELSE.
+            ADD 10 TO posnr.
+          ENDIF.
           <item>-posnr = posnr.
           CLEAR:order_item_in, order_item_inx, schedule_lines,schedule_linesx,wa_extp,wa_extpx.
-          order_item_in-itm_number  = posnr.
+          order_item_in-itm_number  = <item>-posnr.
           order_item_in-material    = <item>-matnr.
-*          order_item_in-prc_group2  = <item>-mvgr2.
-*          order_item_in-prc_group3  = <item>-mvgr3.
-*          order_item_in-reason_rej  = <item>-abgru.
-*          order_item_in-wbs_elem    = data-posid.
+          order_item_in-target_qty  = <item>-kwmeng.
           order_item_in-target_qu   = <item>-vrkme.
           order_item_in-sales_unit  = <item>-vrkme.
-          PERFORM transunit_to_inside(zpubform) CHANGING order_item_in-target_qu.
-          PERFORM transunit_to_inside(zpubform) CHANGING order_item_in-sales_unit.
           order_item_in-plant       = <item>-werks.
-          PERFORM addzero(zpubform) CHANGING order_item_in-material.
-          order_item_in-item_categ  = <item>-pstyv."项目类别
-*          order_item_in-hg_lv_item  = <item>-uepos."上一层项目
-          order_item_in-plant       = <item>-werks.
-*          IF data-auart = 'ZWM0' OR data-vkorg = '3210'.     "只有外贸允许修改税码 "增加马来西亚公司修改税码逻辑 By Qidawei On 20240805
-*            order_item_in-tax_class1     = data-zsl.    "税码调整 add by yangyousheng 20221209
-*          ENDIF.
-          order_item_in-target_qty  = <item>-kwmeng.
+          order_item_in-currency    = data-waerk.
+          PERFORM setbapix USING order_item_in CHANGING order_item_inx.
+          order_item_inx-updateflag  = 'I'.
+          APPEND:order_item_in,order_item_inx.
+
           schedule_lines-itm_number = <item>-posnr.
           schedule_lines-sched_line = '0001'.
-          schedule_lines-req_qty    = order_item_in-target_qty.
+          schedule_lines-req_qty    = <item>-kwmeng.
           schedule_lines-req_date   = sy-datum .
           PERFORM setbapix USING order_item_in CHANGING order_item_inx.
           PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
-          order_item_inx-updateflag  = 'I'.
           schedule_linesx-updateflag = 'I'.
-          APPEND: order_item_in,order_item_inx,schedule_lines,schedule_linesx.
+          APPEND:schedule_lines,schedule_linesx.
 
 *文本
-          "切割文本
-          CLEAR:text_stream,text_stream[],lines[],lines.
-          text_stream-text = <item>-z001.
-          APPEND text_stream.
-          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-            TABLES
-              text_stream = text_stream
-              itf_text    = lines.
-          LOOP AT lines.
-            CLEAR:order_text.
-            "合同项目备注
-            CLEAR:order_text.
-            order_text-itm_number = posnr.
-            order_text-text_id    = 'Z001'.
-            order_text-langu      = sy-langu .
-            order_text-format_col = '*' .
-            order_text-text_line  = lines-tdline.
-            APPEND order_text.
+          LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
+            ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
+            IF sy-subrc EQ 0.
+              "切割文本
+              CLEAR:text_stream,text_stream[],lines[],lines.
+              text_stream-text = <zlongtext>.
+              APPEND text_stream.
+              CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+                TABLES
+                  text_stream = text_stream
+                  itf_text    = lines.
+              LOOP AT lines.
+                CLEAR:order_text.
+                order_text-itm_number = posnr.
+                order_text-text_id    = <lt_ttxit>-tdid.
+                order_text-langu      = sy-langu .
+                order_text-format_col = '*' .
+                order_text-text_line  = lines-tdline.
+                APPEND order_text.
+              ENDLOOP.
+              UNASSIGN <zlongtext>.
+            ENDIF.
           ENDLOOP.
 *增强字段
-          CLEAR:wa_extp.
+          CLEAR:extensionin,wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
-          wa_extp-vbeln  = data-vbeln.
-          CLEAR:extensionin.
           extensionin-structure = 'BAPE_VBAP'.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp
-            IMPORTING
-              ex_container = extensionin-valuepart1.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp+240
-            IMPORTING
-              ex_container = extensionin-valuepart2.
-          CALL METHOD cl_abap_container_utilities=>fill_container_c
-            EXPORTING
-              im_value     = wa_extp+480
-            IMPORTING
-              ex_container = extensionin-valuepart3.
-*          CALL METHOD cl_abap_container_utilities=>fill_container_c
-*            EXPORTING
-*              im_value     = wa_extp+720
-*            IMPORTING
-*              ex_container = extensionin-valuepart4.
+          extensionin+30(960) = wa_extp.
           APPEND extensionin.
-          CLEAR:extensionin ,wa_extpx .
+          CLEAR:extensionin,wa_extpx .
           PERFORM setbapix USING wa_extp CHANGING wa_extpx.
           extensionin-structure = 'BAPE_VBAPX'.
-          extensionin-valuepart1 = wa_extpx.
+          extensionin+30(960) = wa_extpx.
           APPEND extensionin.
-
-          PERFORM setbapix USING sales_items_in CHANGING sales_items_inx.
-          PERFORM setbapix USING sales_schedules_in CHANGING sales_schedules_inx.
-          APPEND: sales_items_in,sales_items_inx,sales_schedules_in,sales_schedules_inx.
 
           "价格
           CLEAR:conditions_in,conditions_inx.
@@ -891,7 +737,6 @@ FUNCTION zfm_crm_so.
           conditions_in-cond_type  = 'ZPR0'.
           conditions_in-cond_value =  <item>-kbetr .
           conditions_in-cond_p_unt = 1.
-*          CONDITIONS_IN-CURRENCY   = 'CNY'.
           conditions_in-currency   = data-waerk.
           PERFORM setbapix USING conditions_in CHANGING conditions_inx.
           conditions_inx-updateflag = 'I'.
@@ -900,17 +745,12 @@ FUNCTION zfm_crm_so.
       ENDLOOP.
 
       LOOP AT it_vbap WHERE znodel = ''.
-        CLEAR:order_item_in, order_item_inx.
+        CLEAR:order_item_in,order_item_inx.
         order_item_in-itm_number  = it_vbap-posnr.
         PERFORM setbapix USING order_item_in CHANGING order_item_inx.
         order_item_inx-updateflag  = 'D'.
-        APPEND: order_item_in,order_item_inx.
+        APPEND:order_item_in,order_item_inx.
       ENDLOOP.
-*调用BAPI_SALESORDER_CHANGE bapi
-*增强字段内存传值更新
-*      EXPORT I_VBAK = VBAKENH
-*             T_VBAP = VBAPENH[]
-*             TO MEMORY ID 'MEMO_ZSSDVBAK_VBAP'.
       SET UPDATE TASK LOCAL.
       CALL FUNCTION 'BAPI_SALESORDER_CHANGE'
         EXPORTING
@@ -937,10 +777,10 @@ FUNCTION zfm_crm_so.
       LOOP AT return WHERE type CA 'AEX'.
         CONCATENATE return-message rtmsg INTO rtmsg SEPARATED BY '/'.
       ENDLOOP.
-      IF sy-subrc NE 0.
+      IF sy-subrc NE 0 AND subrc EQ 0.
         SET UPDATE TASK LOCAL.
         PERFORM bapirun(zpubform)  USING 'S'.
-        CONCATENATE '更改销售合同成功，单号：' salesdocument  INTO rtmsg.
+        rtmsg = |更改销售合同成功，单号：[{ salesdocument }]|.
         vbeln = salesdocument.
         fillmsg 'S' rtmsg.
       ELSE.
@@ -961,7 +801,8 @@ FUNCTION zfm_crm_so.
       ENDIF.
       salesdocument = vbeln.
       CLEAR:order_header_in, order_header_inx.
-*      ORDER_HEADER_IN-COLLECT_NO = VBELN.
+      order_header_in-collect_no = data-vbeln.
+      order_header_inx-collect_no = data-vbeln.
       order_header_inx-updateflag  = 'D'.
 
 *调用BAPI_SALESORDER_CHANGE bapi
@@ -982,7 +823,7 @@ FUNCTION zfm_crm_so.
       LOOP AT return WHERE type CA 'AEX'.
         CONCATENATE return-message rtmsg INTO rtmsg SEPARATED BY '/'.
       ENDLOOP.
-      IF sy-subrc = 0 .
+      IF sy-subrc = 0 OR subrc NE 0.
         PERFORM bapirun(zpubform) USING 'E'.
         fillmsg 'E' rtmsg.
       ELSE.

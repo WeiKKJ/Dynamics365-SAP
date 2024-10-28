@@ -85,5 +85,5 @@ DATA:it_f4      TYPE  lvc_t_f4,
      return_tab TYPE ddshretval OCCURS 0.
 DATA:ret2 TYPE TABLE OF bapiret2,
      msg  TYPE bapi_msg.
-
+DATA:lv_name TYPE char100.
 FIELD-SYMBOLS:<fs> TYPE any.

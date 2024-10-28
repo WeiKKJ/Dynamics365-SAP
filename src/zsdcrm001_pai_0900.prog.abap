@@ -8,22 +8,23 @@
 *----------------------------------------------------------------------*
 MODULE user_command_0900 INPUT.
   save_ok = ok_code.
-  CLEAR ok_code.
+  CLEAR:ok_code,lv_name.
   CASE save_ok.
     WHEN 'BACK' OR 'EXIT' OR 'CANCEL' OR 'QX'.
       PERFORM ezsdr IN PROGRAM saplzfg_crm USING 'X' gs_out-new_contractid CHANGING msg.
       LEAVE TO SCREEN 0.
     WHEN 'DCLICK'.
-      DATA:lv_name TYPE char20.
       GET CURSOR FIELD lv_name.
+      ASSIGN (lv_name) TO FIELD-SYMBOL(<lv_name>).
+      CHECK sy-subrc EQ 0.
       CASE lv_name.
         WHEN 'GS_OUT-KUNNR'.
 *          PERFORM frm_skip_bp .
         WHEN 'GS_OUT-VBELN'.
-*          SET PARAMETER ID 'VL' FIELD gs_head-vbeln_vl .
-*          CALL TRANSACTION 'VL03N' AND SKIP FIRST SCREEN.
+          PERFORM va03 IN PROGRAM zpubform IF FOUND USING <lv_name>.
         WHEN OTHERS.
       ENDCASE.
+      UNASSIGN <lv_name>.
     WHEN 'SO'.
       PERFORM so.
   ENDCASE.
@@ -84,20 +85,20 @@ FORM so .
     gs_out-state = '已处理'.
     MODIFY TABLE gt_out FROM gs_out.
     UPDATE ztcrm_so_head SET vbeln = @vbeln WHERE new_contractid = @gs_out-new_contractid.
-    LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>).
-      UPDATE ztcrm_so_item
-      SET posnr = @<item>-posnr
-      WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @<item>-new_contractdetailid.
-    ENDLOOP.
+*    LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>).
+*      UPDATE ztcrm_so_item
+*      SET posnr = @<item>-posnr
+*      WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @<item>-new_contractdetailid.
+*    ENDLOOP.
     LOOP AT gt_item INTO wa.
       IF wa-action EQ 'D'.
         DELETE FROM ztcrm_so_item
-        WHERE new_contractid = @wa-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.
+        WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.
         DELETE TABLE gt_item FROM wa.
       ELSE.
         UPDATE ztcrm_so_item
-        SET action = '',matnr = @wa-matnr
-        WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @<item>-new_contractdetailid.
+        SET action = '',matnr = @wa-matnr,posnr = @wa-posnr
+        WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.
       ENDIF.
       CLEAR wa-action.
       MODIFY gt_item FROM wa.

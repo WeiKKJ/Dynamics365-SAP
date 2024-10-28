@@ -58,6 +58,7 @@ FORM getdata.
     LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
     LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
     WHERE EXISTS ( SELECT * FROM ztcrm_so_item WHERE new_contractid = z~new_contractid AND action NE '' )
+    ORDER BY z~new_contractid
     INTO CORRESPONDING FIELDS OF TABLE @gt_out.
   IF gt_out IS INITIAL.
     MESSAGE s000(oo) WITH '无数据'.
@@ -230,7 +231,7 @@ FORM top_of_pagea.
   sjtms = lines( gt_out ).
 
   wa_list_commentary-typ = 'S'.
-  wa_list_commentary-key = '正常发货单派车条目数:'.
+  wa_list_commentary-key = 'CRM销售合同列表条目数:'.
   wa_list_commentary-info = sjtms.
   APPEND wa_list_commentary TO it_list_commentary.
 
@@ -351,12 +352,28 @@ FORM getitems .
   SELECT
     *
     FROM ztcrm_so_item
-    INTO CORRESPONDING FIELDS OF TABLE @gt_item
     WHERE new_contractid = @gs_out-new_contractid
     AND action NE ''
+    ORDER BY new_contractdetailid
+    INTO CORRESPONDING FIELDS OF TABLE @gt_item
     .
   IF gt_item IS INITIAL.
     MESSAGE '无明细数据' TYPE 'E'.
+  ENDIF.
+  SELECT
+    *
+    FROM vbak
+    WHERE new_contractid = @gs_out-new_contractid
+    INTO TABLE @DATA(lt_countvn)
+  .
+  IF lines( lt_countvn ) GT 1.
+    msg = |CRM合同ID[{ gs_out-new_contractid }]存在于[{ lines( lt_countvn ) }]个合同！！！|.
+    MESSAGE msg TYPE 'E'.
+  ENDIF.
+  IF lt_countvn IS NOT INITIAL.
+    READ TABLE lt_countvn INTO DATA(wa_countvn) INDEX 1.
+    gs_out-vbeln = wa_countvn-vbeln.
+    gs_out-auart = wa_countvn-auart.
   ENDIF.
   PERFORM ezsdr IN PROGRAM saplzfg_crm USING '' gs_out-new_contractid CHANGING msg.
   IF msg IS NOT INITIAL.
