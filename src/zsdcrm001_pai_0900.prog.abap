@@ -13,6 +13,8 @@ MODULE user_command_0900 INPUT.
     WHEN 'BACK' OR 'EXIT' OR 'CANCEL' OR 'QX'.
       PERFORM ezsdr IN PROGRAM saplzfg_crm USING 'X' gs_out-new_contractid CHANGING msg.
       LEAVE TO SCREEN 0.
+*    WHEN 'ENTE'.
+*      GET CURSOR FIELD lv_name.
     WHEN 'DCLICK'.
       GET CURSOR FIELD lv_name.
       ASSIGN (lv_name) TO FIELD-SYMBOL(<lv_name>).
@@ -25,6 +27,15 @@ MODULE user_command_0900 INPUT.
         WHEN OTHERS.
       ENDCASE.
       UNASSIGN <lv_name>.
+    WHEN 'P'.
+      CLEAR:gs_out-province_des,gs_out-city,gs_out-city_des,gs_out-county,gs_out-county_des.
+      SELECT SINGLE zname FROM ztsd226 WHERE zid = @gs_out-province INTO @gs_out-province_des.
+    WHEN 'CI'.
+      CLEAR:gs_out-city_des,gs_out-county,gs_out-county_des.
+      SELECT SINGLE zname FROM ztsd226 WHERE zid = @gs_out-city INTO @gs_out-city_des.
+    WHEN 'CO'.
+      CLEAR:gs_out-county_des.
+      SELECT SINGLE zname FROM ztsd226 WHERE zid = @gs_out-county INTO @gs_out-county_des.
     WHEN 'SO'.
       PERFORM so.
   ENDCASE.
@@ -51,13 +62,19 @@ FORM so .
   IF line_exists( gt_item[ matnr = '' ] ).
     MESSAGE '请填写物料号' TYPE 'E'.
   ENDIF.
+  LOOP AT gt_item TRANSPORTING NO FIELDS WHERE action NE ''.
+    EXIT.
+  ENDLOOP.
+  IF sy-subrc NE 0.
+    MESSAGE '明细行均已处理完毕' TYPE 'E'.
+  ENDIF.
   IF gs_out-vbeln IS INITIAL.
     action = 'I'.
   ELSE.
     action = 'U'.
   ENDIF.
   MOVE-CORRESPONDING gs_out TO data.
-  LOOP AT gt_item INTO DATA(wa) WHERE action NE 'D' AND action IS NOT INITIAL.
+  LOOP AT gt_item INTO DATA(wa) WHERE action NE 'D'.
     MOVE-CORRESPONDING wa TO gs_itemso.
     APPEND gs_itemso TO gt_itemso.
   ENDLOOP.
@@ -84,13 +101,16 @@ FORM so .
     gs_out-vbeln = vbeln.
     gs_out-state = '已处理'.
     MODIFY TABLE gt_out FROM gs_out.
-    UPDATE ztcrm_so_head SET vbeln = @vbeln WHERE new_contractid = @gs_out-new_contractid.
-*    LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>).
-*      UPDATE ztcrm_so_item
-*      SET posnr = @<item>-posnr
-*      WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @<item>-new_contractdetailid.
-*    ENDLOOP.
+    UPDATE ztcrm_so_head
+    SET vbeln = @vbeln,province = @gs_out-province,city = @gs_out-city,county = @gs_out-county
+    WHERE new_contractid = @gs_out-new_contractid.
+
     LOOP AT gt_item INTO wa.
+      CLEAR wa-field_style.
+      CLEAR stylelin.
+      stylelin-fieldname = 'MATNR'.
+      stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
+      INSERT stylelin INTO TABLE wa-field_style.
       IF wa-action EQ 'D'.
         DELETE FROM ztcrm_so_item
         WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.

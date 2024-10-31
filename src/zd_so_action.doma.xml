@@ -42,6 +42,11 @@
      <DOMVALUE_L>S</DOMVALUE_L>
      <DDTEXT>保存数据（CRM用）</DDTEXT>
     </DD07V>
+    <DD07V>
+     <VALPOS>0006</VALPOS>
+     <DDLANGUAGE>1</DDLANGUAGE>
+     <DDTEXT>已处理完成</DDTEXT>
+    </DD07V>
    </DD07V_TAB>
   </asx:values>
  </asx:abap>

@@ -4,6 +4,7 @@
 *&
 *&---------------------------------------------------------------------*
 REPORT zsdcrm001.
+TABLES:tvgrt.
 INCLUDE zsdcrm001_top.
 INCLUDE zlongtext.
 INCLUDE zsdcrm001_define.
@@ -12,8 +13,10 @@ INCLUDE zsdcrm001_class.
 
 
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE btxt1.
-  PARAMETERS p_werks TYPE plaf-plwrk DEFAULT '2000'.
-
+  PARAMETERS p_vkorg TYPE tvko-vkorg DEFAULT '2000' OBLIGATORY.
+  SELECT-OPTIONS:s_spart FOR gs_out-spart,
+                 s_vkgrp FOR tvgrt-vkgrp.
+  PARAMETERS p_s AS CHECKBOX TYPE char1 DEFAULT 'X' USER-COMMAND ss1.
 SELECTION-SCREEN END OF BLOCK b1.
 
 AT SELECTION-SCREEN OUTPUT.
@@ -49,17 +52,34 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM getdata.
   CLEAR gt_out.
-
-  SELECT
-    z~*,
-    ag~name1 AS name_ag,
-    we~name1 AS name_we
-    FROM ztcrm_so_head AS z
-    LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
-    LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
-    WHERE EXISTS ( SELECT * FROM ztcrm_so_item WHERE new_contractid = z~new_contractid AND action NE '' )
-    ORDER BY z~new_contractid
-    INTO CORRESPONDING FIELDS OF TABLE @gt_out.
+  IF p_s = 'X'.
+    SELECT
+      z~*,
+      ag~name1 AS name_ag,
+      we~name1 AS name_we
+      FROM ztcrm_so_head AS z
+      LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
+      LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+      WHERE z~vkorg = @p_vkorg
+      AND z~spart IN @s_spart
+      AND z~vkgrp IN @s_vkgrp
+      AND EXISTS ( SELECT * FROM ztcrm_so_item WHERE new_contractid = z~new_contractid AND action NE '' )
+      ORDER BY z~new_contractid
+      INTO CORRESPONDING FIELDS OF TABLE @gt_out.
+  ELSE.
+    SELECT
+      z~*,
+      ag~name1 AS name_ag,
+      we~name1 AS name_we
+      FROM ztcrm_so_head AS z
+      LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
+      LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+      WHERE z~vkorg = @p_vkorg
+      AND z~spart IN @s_spart
+      AND z~vkgrp IN @s_vkgrp
+      ORDER BY z~new_contractid
+      INTO CORRESPONDING FIELDS OF TABLE @gt_out.
+  ENDIF.
   IF gt_out IS INITIAL.
     MESSAGE s000(oo) WITH '无数据'.
     EXIT.
@@ -69,7 +89,7 @@ FORM getdata.
     domvalue_l,
     ddtext
     FROM dd07t
-    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX' )
+    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX','ZD_ZISJB' )
     AND ddlanguage = @sy-langu
     AND as4local = 'A'
     ORDER BY domname,domvalue_l
@@ -107,12 +127,17 @@ FORM getdata.
     OR zid = @gt_out-city
     OR zid = @gt_out-county
     INTO TABLE @DATA(lt_226).
+  SELECT auart,bezei
+    FROM tvakt
+    WHERE spras = @sy-langu
+  INTO TABLE @DATA(lt_tvakt).
   LOOP AT gt_out INTO gs_out.
     getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
     getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
     getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
     getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
     getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
+    getdomdes 'ZD_ZISJB' gs_out-zISJB gs_out-zisjb_des.
     READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
     IF sy-subrc EQ 0.
       gs_out-vkorg_des = wa1-vtext.
@@ -148,6 +173,30 @@ FORM getdata.
     READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
     IF sy-subrc EQ 0.
       gs_out-county_des = wa226-zname.
+    ENDIF.
+    READ TABLE lt_tvakt INTO DATA(wa7) WITH KEY auart = gs_out-auart.
+    IF sy-subrc EQ 0.
+      gs_out-auart_des = wa7-bezei.
+    ENDIF.
+    IF gs_out-zisck = 'X'.
+      gs_out-zisck_des = '是'.
+    ELSE.
+      gs_out-zisck_des = '否'.
+    ENDIF.
+    IF gs_out-ztt = 'X'.
+      gs_out-ztt_des = '是'.
+    ELSE.
+      gs_out-ztt_des = '否'.
+    ENDIF.
+    IF gs_out-ziscj = 'X'.
+      gs_out-ziscj_des = '是'.
+    ELSE.
+      gs_out-ziscj_des = '否'.
+    ENDIF.
+    IF gs_out-yl1 = 'X'.
+      gs_out-yl1_des = '是'.
+    ELSE.
+      gs_out-yl1_des = '否'.
     ENDIF.
     MODIFY gt_out FROM gs_out.
   ENDLOOP.
@@ -283,6 +332,8 @@ FORM user_command USING pv_ucomm TYPE sy-ucomm ##CALLED
       destroy_control_object o_customcontainer    .
       destroy_control_object item_container    .
       destroy_control_object alv_grid_item     .
+      destroy_control_object o_container_warning.
+      destroy_control_object o_textedit_warning.
       FREE o_handle_event     .
       FREE o_handle_simple_event     .
       PERFORM getitems.
@@ -353,7 +404,7 @@ FORM getitems .
     *
     FROM ztcrm_so_item
     WHERE new_contractid = @gs_out-new_contractid
-    AND action NE ''
+*    AND action NE ''
     ORDER BY new_contractdetailid
     INTO CORRESPONDING FIELDS OF TABLE @gt_item
     .
@@ -364,6 +415,7 @@ FORM getitems .
     *
     FROM vbak
     WHERE new_contractid = @gs_out-new_contractid
+    AND vbtyp = 'G'
     INTO TABLE @DATA(lt_countvn)
   .
   IF lines( lt_countvn ) GT 1.
@@ -417,9 +469,27 @@ FORM getitems .
     AND mara~groes = @gt_item-groes
     INTO TABLE @DATA(lt_mara)
     .
+  SELECT
+    mara~matnr,
+    makt~maktx
+    FROM mara
+    LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+    FOR ALL ENTRIES IN @gt_item
+    WHERE mara~matnr = @gt_item-matnr
+    INTO TABLE @DATA(lt_makt)
+    .
 *  SORT lt_mara BY matnr.
   SELECT MAX( posnr ) FROM vbap WHERE vbeln = @gs_out-vbeln INTO @posnr.
   LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<gt_item>).
+    CLEAR <gt_item>-field_style.
+    CLEAR stylelin.
+    stylelin-fieldname = 'MATNR'.
+    IF <gt_item>-action = ''.
+      stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
+    ELSE.
+      stylelin-style = cl_gui_alv_grid=>mc_style_enabled.
+    ENDIF.
+    INSERT stylelin INTO TABLE <gt_item>-field_style.
     IF <gt_item>-posnr IS INITIAL.
       ADD 10 TO posnr.
     ELSE.
@@ -427,12 +497,19 @@ FORM getitems .
     ENDIF.
 
     <gt_item>-posnr = posnr.
-    READ TABLE lt_mara ASSIGNING FIELD-SYMBOL(<lt_mara>) WITH KEY mara-chandi = <gt_item>-chandi
-    mara-caizhi = <gt_item>-caizhi mara-width = <gt_item>-width mara-houdu = <gt_item>-houdu mara-yl2 = <gt_item>-yl2
-    mara-yl3 = <gt_item>-yl3 mara-yl4 = <gt_item>-yl4 mara-hcl = <gt_item>-hcl mara-groes = <gt_item>-groes.
-    IF sy-subrc EQ 0.
-      <gt_item>-matnr = <lt_mara>-mara-matnr.
-      <gt_item>-maktx = <lt_mara>-maktx.
+    IF <gt_item>-matnr IS NOT INITIAL.
+      READ TABLE lt_makt ASSIGNING FIELD-SYMBOL(<lt_makt>) WITH KEY matnr = <gt_item>-matnr.
+      IF sy-subrc EQ 0.
+        <gt_item>-maktx = <lt_makt>-maktx.
+      ENDIF.
+    ELSE.
+      READ TABLE lt_mara ASSIGNING FIELD-SYMBOL(<lt_mara>) WITH KEY mara-chandi = <gt_item>-chandi
+      mara-caizhi = <gt_item>-caizhi mara-width = <gt_item>-width mara-houdu = <gt_item>-houdu mara-yl2 = <gt_item>-yl2
+      mara-yl3 = <gt_item>-yl3 mara-yl4 = <gt_item>-yl4 mara-hcl = <gt_item>-hcl mara-groes = <gt_item>-groes.
+      IF sy-subrc EQ 0.
+        <gt_item>-matnr = <lt_mara>-mara-matnr.
+        <gt_item>-maktx = <lt_mara>-maktx.
+      ENDIF.
     ENDIF.
     LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
       gs_longtext_im-sapmk = 'SD'.
@@ -478,7 +555,7 @@ FORM getitems .
       ENDIF.
     ENDLOOP.
   ENDLOOP.
-  MODIFY TABLE gt_out FROM gs_out.
+  MODIFY gt_out FROM gs_out INDEX <row>-row_id.
   PERFORM fillfldct.
   CALL SCREEN 900.
 ENDFORM.
@@ -519,7 +596,7 @@ FORM fillfldct .
             'VRKME '  'ZTCRM_SO_ITEM' 'VRKME ' '销售单位  '   ,
             'KWMENG'  'ZTCRM_SO_ITEM' 'KWMENG' '订单数量  '   ,
             'KBETR '  'ZTCRM_SO_ITEM' 'KBETR ' '金额     '   ,
-            'Z001  '  'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备'   ,
+            'Z001  '  'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'   ,
             'WERKS '  'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '   ,
             'ACTION'  'ZTCRM_SO_ITEM' 'ACTION' '行状态   '   .
     WHEN '14'.
@@ -563,7 +640,7 @@ FORM fillfldct .
             'VRKME ' 'ZTCRM_SO_ITEM' 'VRKME ' '销售单位 '   ,
             'KWMENG' 'ZTCRM_SO_ITEM' 'KWMENG' '订单数量 '   ,
             'KBETR ' 'ZTCRM_SO_ITEM' 'KBETR ' '金额     '  ,
-            'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备'  ,
+            'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'  ,
             'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '  ,
             'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态   '  .
   ENDCASE.

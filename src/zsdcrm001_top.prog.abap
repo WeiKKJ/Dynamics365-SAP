@@ -24,15 +24,23 @@ DATA:  name_ag      TYPE name1,
        province_des TYPE ztsd226-zname,
        city_des     TYPE ztsd226-zname,
        county_des   TYPE ztsd226-zname,
+       auart_des    TYPE tvakt-bezei,
+       zisck_des    TYPE char1,
+       ztt_des      TYPE char1,
+       ziscj_des    TYPE char1,
+       yl1_des      TYPE char1,
+       zisjb_des    TYPE char8,
        sel,
      END OF gs_out,
-     gt_out LIKE TABLE OF gs_out.
+     gt_out LIKE TABLE OF gs_out WITH KEY new_contractid.
 DATA:BEGIN OF gs_item.
        INCLUDE TYPE ztcrm_so_item.
-DATA:  maktx TYPE maktx,
+DATA:  maktx       TYPE maktx,
+       field_style TYPE lvc_t_styl,
        sel,
      END OF gs_item,
-     gt_item LIKE TABLE OF gs_item.
+     gt_item  LIKE TABLE OF gs_item,
+     stylelin TYPE lvc_s_styl.
 DATA:stbl      TYPE lvc_s_stbl,
      l_ref_alv TYPE REF TO cl_gui_alv_grid.
 DATA:save_ok LIKE sy-ucomm,
@@ -42,7 +50,9 @@ DATA:o_container          TYPE REF TO cl_gui_custom_container,
      o_container_tdid     TYPE REF TO cl_gui_container,
      o_container_longtext TYPE REF TO cl_gui_container,
      o_tree_longtext      TYPE REF TO cl_gui_alv_tree,
-     o_textedit           TYPE REF TO cl_gui_textedit.
+     o_textedit           TYPE REF TO cl_gui_textedit,
+     o_container_warning  TYPE REF TO cl_gui_custom_container,
+     o_textedit_warning   TYPE REF TO cl_gui_textedit.
 DATA:BEGIN OF s_node_tdid.
        INCLUDE TYPE ttxit.
 DATA:  key TYPE lvc_nkey,
@@ -86,4 +96,12 @@ DATA:it_f4      TYPE  lvc_t_f4,
 DATA:ret2 TYPE TABLE OF bapiret2,
      msg  TYPE bapi_msg.
 DATA:lv_name TYPE char100.
-FIELD-SYMBOLS:<fs> TYPE any.
+TYPES: BEGIN OF wa,
+         key(40),
+         text(80) TYPE c,
+       END OF wa.
+DATA:tabp  TYPE TABLE OF wa WITH HEADER LINE,
+     tabci TYPE TABLE OF wa WITH HEADER LINE,
+     tabco TYPE TABLE OF wa WITH HEADER LINE.
+
+FIELD-SYMBOLS:<tab> TYPE STANDARD TABLE.

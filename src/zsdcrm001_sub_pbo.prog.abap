@@ -143,6 +143,8 @@ FORM repo_init .
     EXCEPTIONS
       OTHERS                     = 1.
   o_textedit->set_readonly_mode( readonly_mode = 1 ).
+  o_textedit->set_statusbar_mode( statusbar_mode = 0 ).
+  o_textedit->set_toolbar_mode( toolbar_mode = 0 ).
 ENDFORM.
 
 FORM repo_fill.                                             "#EC NEEDED
@@ -173,6 +175,31 @@ FORM repo_fill.                                             "#EC NEEDED
   ENDLOOP.
   CALL METHOD o_tree_longtext->frontend_update.
 ENDFORM.                    " REPO_FILL
+*&---------------------------------------------------------------------*
+*& Module MODIFY_SCREEN OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE modify_screen OUTPUT.
+  LOOP AT SCREEN.
+    IF gs_out-state = '待处理'.
+      CASE screen-group1.
+        WHEN 'G1'.
+          screen-input = 1.
+      ENDCASE.
+    ENDIF.
+    MODIFY SCREEN.
+  ENDLOOP.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*& Module SET_LIST_BOX OUTPUT
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+MODULE set_list_box OUTPUT.
+  PERFORM set_list_box.
+ENDMODULE.
 *&---------------------------------------------------------------------*
 *& Module SHOWITEMS OUTPUT
 *&---------------------------------------------------------------------*
@@ -214,6 +241,9 @@ ENDMODULE.
 *& <--  p2        text
 *&---------------------------------------------------------------------*
 FORM callalv_item .
+  gs_slayt_item-stylefname = 'FIELD_STYLE'.
+  gs_slayt_item-box_fname  = 'SEL'.
+  gs_slayt_item-zebra      = 'X'.
   PERFORM callalv_oo IN PROGRAM zvariant_compare
   TABLES gt_item USING alv_grid_item gt_fldct_item 'P1' gs_slayt_item.
 ENDFORM.
@@ -388,4 +418,15 @@ FORM repo_fill_simple .
 
 * Exand all root nodes (my, shared, history)
   CALL METHOD o_tree_repository->expand_root_nodes.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_list_box
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM set_list_box .
+
 ENDFORM.

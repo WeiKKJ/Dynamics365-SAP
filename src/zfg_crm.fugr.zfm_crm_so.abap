@@ -77,7 +77,15 @@ FUNCTION zfm_crm_so.
 **********************************
   DATA:wa_head TYPE ztcrm_so_head,
        lt_item TYPE TABLE OF ztcrm_so_item.
-
+  TYPES:BEGIN OF ty_so,
+          ak TYPE vbak,
+          ap TYPE TABLE OF vbap WITH DEFAULT KEY,
+        END OF ty_so.
+  DATA:BEGIN OF wa_check,
+         head TYPE ztcrm_so_head,
+         item TYPE TABLE OF ztcrm_so_item,
+         so   TYPE TABLE OF ty_so,
+       END OF wa_check.
   PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
@@ -87,17 +95,7 @@ FUNCTION zfm_crm_so.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
   ENDIF.
-  SELECT
-    ttxit~*
-    FROM tvak
-    JOIN ttxern ON tvak~txtgr = ttxern~txtgr
-    JOIN ttxit ON ttxern~tdid = ttxit~tdid AND ttxern~tdobject = ttxit~tdobject
-    WHERE tvak~auart = @data-auart
-    AND ttxern~tdobject IN ( 'VBBK','VBBP' )
-    AND ttxern~tdid LIKE 'Z%'
-    AND ttxit~tdspras = @sy-langu
-    ORDER BY ttxit~tdobject,ttxit~tdid
-    INTO TABLE @DATA(lt_ttxit).
+
   "补0
   PERFORM addzero(zpubform) CHANGING data-kunnr_we.
   PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
@@ -191,35 +189,77 @@ FUNCTION zfm_crm_so.
     ENDLOOP.
   ENDLOOP.
 
+  SELECT
+    ttxit~*
+    FROM tvak
+    JOIN ttxern ON tvak~txtgr = ttxern~txtgr
+    JOIN ttxit ON ttxern~tdid = ttxit~tdid AND ttxern~tdobject = ttxit~tdobject
+    WHERE tvak~auart = @data-auart
+    AND ttxern~tdobject IN ( 'VBBK','VBBP' )
+    AND ttxern~tdid LIKE 'Z%'
+    AND ttxit~tdspras = @sy-langu
+    ORDER BY ttxit~tdobject,ttxit~tdid
+    INTO TABLE @DATA(lt_ttxit).
+
+  " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
+  SELECT SINGLE
+    new_contractid,
+    vbeln
+    FROM ztcrm_so_head
+    WHERE new_contractid = @data-new_contractid
+    INTO CORRESPONDING FIELDS OF @wa_check-head
+    .
+  SELECT
+    new_contractid,
+    new_contractdetailid,
+    posnr
+    FROM ztcrm_so_item
+    WHERE new_contractid = @data-new_contractid
+    INTO CORRESPONDING FIELDS OF TABLE @wa_check-item
+    .
+  SELECT
+    vbak~vbeln,
+    vbak~new_contractid
+    FROM vbak
+    WHERE new_contractid = @data-new_contractid
+    AND vbtyp = 'G'
+    INTO TABLE @DATA(lt_vbak)
+    .
+  LOOP AT lt_vbak ASSIGNING FIELD-SYMBOL(<lt_vbak>).
+    INSERT INITIAL LINE INTO TABLE wa_check-so ASSIGNING FIELD-SYMBOL(<so>).
+    MOVE-CORRESPONDING <lt_vbak> TO <so>-ak.
+    SELECT vbeln,posnr,new_contractdetailid FROM vbap WHERE vbeln = @<lt_vbak>-vbeln INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
+  ENDLOOP.
+
+  DESCRIBE TABLE wa_check-so LINES DATA(soline).
+  IF soline GT 1.
+    rtmsg = |CRM合同ID[{ data-new_contractid }]创建了[{ soline }]个SAP合同了，请核实SAP数据|.
+    fillmsg 'E' rtmsg.
+  ELSEIF soline EQ 1.
+    READ TABLE wa_check-so INTO DATA(wa_so) INDEX 1.
+    IF data-vbeln IS NOT INITIAL.
+      IF data-vbeln NE wa_so-ak-vbeln.
+        rtmsg = |CRM的合同号[{ data-vbeln }]和SAP的合同号[{ wa_so-ak-vbeln }]不一致|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
+    ELSE.
+      data-vbeln = wa_so-ak-vbeln.
+    ENDIF.
+  ENDIF.
+
   CASE action.
     WHEN 'S'.
-
-      " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
-      SELECT
-        vbak~vbeln,
-        vbap~posnr,
-        vbak~new_contractid,
-        vbap~new_contractdetailid,
-        @space AS action
-        FROM ztcrm_so_item AS vbap
-        JOIN ztcrm_so_head AS vbak ON vbap~new_contractid = vbap~new_contractid
-        WHERE vbak~new_contractid = @data-new_contractid
-        INTO TABLE @DATA(lt_check)
-        .
-      SORT lt_check BY new_contractdetailid.
       MOVE-CORRESPONDING data TO wa_head.
-      wa_head-kunnr_we = |{ wa_head-kunnr_we ALPHA = IN }|.
-      wa_head-kunnr_ag = |{ wa_head-kunnr_ag ALPHA = IN }|.
-      CLEAR wa_head-vbeln.
       MOVE-CORRESPONDING data-items TO lt_item.
+
       LOOP AT lt_item ASSIGNING FIELD-SYMBOL(<lt_item>).
         CLEAR:<lt_item>-posnr.
         <lt_item>-new_contractid = data-new_contractid.
-        IF lt_check IS NOT INITIAL.
-          READ TABLE lt_check ASSIGNING FIELD-SYMBOL(<lt_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
+        IF wa_check IS NOT INITIAL.
+          READ TABLE wa_check-item ASSIGNING FIELD-SYMBOL(<wa_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
           IF sy-subrc EQ 0.
-            wa_head-vbeln = |{ <lt_check>-vbeln ALPHA = IN }|.
-            <lt_item>-posnr = |{ <lt_check>-posnr ALPHA = IN }|.
+            <lt_item>-posnr = |{ <wa_check>-posnr ALPHA = IN }|.
+            <lt_item>-matnr = <wa_check>-matnr.
             IF NOT ( <lt_item>-action = 'U' OR <lt_item>-action = 'D' ).
               rtmsg = |明细ID[{ <lt_item>-new_contractdetailid }]已存在，只能做修改或删除操作|.
               fillmsg 'E' rtmsg.

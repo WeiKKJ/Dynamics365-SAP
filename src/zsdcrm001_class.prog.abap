@@ -135,6 +135,9 @@ FORM frm_handle_data_changed  USING    p_er_data_changed TYPE REF TO cl_alv_chan
           AND matnr = @mod-value
           INTO @<item>-maktx
           .
+        IF sy-subrc NE 0.
+          CLEAR <item>-maktx.
+        ENDIF.
     ENDCASE.
   ENDLOOP.
 ENDFORM.
