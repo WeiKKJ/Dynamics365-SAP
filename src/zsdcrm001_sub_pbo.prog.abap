@@ -428,5 +428,49 @@ ENDFORM.
 *& <--  p2        text
 *&---------------------------------------------------------------------*
 FORM set_list_box .
-
+  TYPES: BEGIN OF wa,
+           key(40),
+           text(80) TYPE c,
+         END OF wa.
+  DATA:tabp  TYPE TABLE OF wa WITH HEADER LINE,
+       tabci TYPE TABLE OF wa WITH HEADER LINE,
+       tabco TYPE TABLE OF wa WITH HEADER LINE.
+  SELECT
+    zid AS key,
+    zname AS text
+    FROM ztsd226
+    WHERE zlevel = '1'
+    ORDER BY key
+    INTO TABLE @tabp
+    .
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GS_OUT-PROVINCE'
+      values = tabp[].
+  SELECT
+    zid AS key,
+    zname AS text
+    FROM ztsd226
+    WHERE zlevel = '2'
+    AND zpid = @gs_out-province
+    ORDER BY key
+    INTO TABLE @tabci
+      .
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GS_OUT-CITY'
+      values = tabci[].
+  SELECT
+     zid AS key,
+     zname AS text
+     FROM ztsd226
+     WHERE zlevel = '3'
+     AND zpid = @gs_out-city
+     ORDER BY key
+     INTO TABLE @tabco
+       .
+  CALL FUNCTION 'VRM_SET_VALUES'
+    EXPORTING
+      id     = 'GS_OUT-COUNTY'
+      values = tabco[].
 ENDFORM.

@@ -25,7 +25,7 @@ DATA:  name_ag      TYPE name1,
        city_des     TYPE ztsd226-zname,
        county_des   TYPE ztsd226-zname,
        auart_des    TYPE tvakt-bezei,
-       zisck_des    TYPE char1,
+       zisck_des    TYPE char5,
        ztt_des      TYPE char1,
        ziscj_des    TYPE char1,
        yl1_des      TYPE char1,
@@ -96,12 +96,4 @@ DATA:it_f4      TYPE  lvc_t_f4,
 DATA:ret2 TYPE TABLE OF bapiret2,
      msg  TYPE bapi_msg.
 DATA:lv_name TYPE char100.
-TYPES: BEGIN OF wa,
-         key(40),
-         text(80) TYPE c,
-       END OF wa.
-DATA:tabp  TYPE TABLE OF wa WITH HEADER LINE,
-     tabci TYPE TABLE OF wa WITH HEADER LINE,
-     tabco TYPE TABLE OF wa WITH HEADER LINE.
-
 FIELD-SYMBOLS:<tab> TYPE STANDARD TABLE.

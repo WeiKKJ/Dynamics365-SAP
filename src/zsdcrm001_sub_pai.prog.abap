@@ -27,9 +27,37 @@ ENDMODULE.
 *       text
 *----------------------------------------------------------------------*
 MODULE zprovincef4 INPUT.
+  PERFORM zf4_province.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  ZCITYF4  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE zcityf4 INPUT.
+  PERFORM zf4_city.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  ZCOUNTYF4  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE zcountyf4 INPUT.
+  PERFORM zf4_county.
+ENDMODULE.
+
+*&---------------------------------------------------------------------*
+*& Form zf4_province
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM zf4_province .
   DATA: lt_return TYPE STANDARD TABLE OF ddshretval,
         ls_return TYPE ddshretval.
-  IF gs_out-province IS INITIAL.
+*  IF gs_out-province IS INITIAL.
     SELECT
       zid AS province,
       zname AS provincet
@@ -38,6 +66,7 @@ MODULE zprovincef4 INPUT.
       ORDER BY province
       INTO TABLE @DATA(lt_province)
        .
+    ASSIGN lt_province TO <tab>.
     CALL FUNCTION 'F4IF_INT_TABLE_VALUE_REQUEST'
       EXPORTING
         retfield         = 'PROVINCE'            "筛选内表里面的字段
@@ -48,7 +77,7 @@ MODULE zprovincef4 INPUT.
         callback_program = sy-repid
         callback_form    = 'PROVINCET_FORM'
       TABLES
-        value_tab        = lt_province        "需要显示帮助的值内表
+        value_tab        = <tab>        "需要显示帮助的值内表
       " FIELD_TAB        = FIELD_TAB
         return_tab       = lt_return          "返回值
       EXCEPTIONS
@@ -60,15 +89,31 @@ MODULE zprovincef4 INPUT.
       READ TABLE lt_return INTO ls_return INDEX 1.
       gs_out-province = ls_return-fieldval.
     ENDIF.
-  ENDIF.
-ENDMODULE.
+*  ENDIF.
+ENDFORM.
+FORM provincet_form TABLES record_tab STRUCTURE seahlpres
+           CHANGING shlp TYPE shlp_descr_t
+                    callcontrol LIKE ddshf4ctrl.
+  DATA: interface LIKE LINE OF shlp-interface.
+  CLEAR:interface.
+  READ TABLE shlp-interface INTO interface INDEX 1.
+*选中后自动带出(SHLPFIELD字段结构F0001)
+  interface-shlpfield+4(1) = '2'.
+  interface-valfield = 'GS_OUT-PROVINCE_DES'.
+  APPEND interface TO shlp-interface.
+ENDFORM.
 *&---------------------------------------------------------------------*
-*&      Module  ZCITYF4  INPUT
+*& Form zf4_city
 *&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
-MODULE zcityf4 INPUT.
-  IF gs_out-city IS INITIAL.
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM zf4_city .
+  DATA: lt_return TYPE STANDARD TABLE OF ddshretval,
+        ls_return TYPE ddshretval.
+*  IF gs_out-city IS INITIAL.
     IF gs_out-province IS NOT INITIAL.
       SELECT
         zid AS city,
@@ -116,15 +161,40 @@ MODULE zcityf4 INPUT.
       READ TABLE lt_return INTO ls_return INDEX 1.
       gs_out-city = ls_return-fieldval.
     ENDIF.
+*  ENDIF.
+ENDFORM.
+FORM cityt_form TABLES record_tab STRUCTURE seahlpres
+           CHANGING shlp TYPE shlp_descr_t
+                    callcontrol LIKE ddshf4ctrl.
+  READ TABLE shlp-interface INTO DATA(interface) INDEX 1.
+  IF gs_out-province IS NOT INITIAL.
+    interface-shlpfield+4(1) = '2'.
+    interface-valfield = 'GS_OUT-CITY_DES'.
+    APPEND interface TO shlp-interface.
+  ELSE.
+    interface-shlpfield+4(1) = '1'.
+    interface-valfield = 'GS_OUT-PROVINCE'.
+    APPEND interface TO shlp-interface.
+    interface-shlpfield+4(1) = '2'.
+    interface-valfield = 'GS_OUT-PROVINCE_DES'.
+    APPEND interface TO shlp-interface.
+    interface-shlpfield+4(1) = '4'.
+    interface-valfield = 'GS_OUT-CITY_DES'.
+    APPEND interface TO shlp-interface.
   ENDIF.
-ENDMODULE.
+ENDFORM.
 *&---------------------------------------------------------------------*
-*&      Module  ZCOUNTYF4  INPUT
+*& Form zf4_county
 *&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
-MODULE zcountyf4 INPUT.
-  IF gs_out-county IS INITIAL.
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM zf4_county .
+  DATA: lt_return TYPE STANDARD TABLE OF ddshretval,
+        ls_return TYPE ddshretval.
+*  IF gs_out-county IS INITIAL.
     IF gs_out-city IS NOT INITIAL.
       SELECT
         zid AS county,
@@ -191,42 +261,8 @@ MODULE zcountyf4 INPUT.
       READ TABLE lt_return INTO ls_return INDEX 1.
       gs_out-county = ls_return-fieldval.
     ENDIF.
-  ENDIF.
-ENDMODULE.
-
-FORM provincet_form TABLES record_tab STRUCTURE seahlpres
-           CHANGING shlp TYPE shlp_descr_t
-                    callcontrol LIKE ddshf4ctrl.
-  DATA: interface LIKE LINE OF shlp-interface.
-  CLEAR:interface.
-  READ TABLE shlp-interface INTO interface INDEX 1.
-*选中后自动带出(SHLPFIELD字段结构F0001)
-  interface-shlpfield+4(1) = '2'.
-  interface-valfield = 'GS_OUT-PROVINCE_DES'.
-  APPEND interface TO shlp-interface.
+*  ENDIF.
 ENDFORM.
-
-FORM cityt_form TABLES record_tab STRUCTURE seahlpres
-           CHANGING shlp TYPE shlp_descr_t
-                    callcontrol LIKE ddshf4ctrl.
-  READ TABLE shlp-interface INTO DATA(interface) INDEX 1.
-  IF gs_out-province IS NOT INITIAL.
-    interface-shlpfield+4(1) = '2'.
-    interface-valfield = 'GS_OUT-CITY_DES'.
-    APPEND interface TO shlp-interface.
-  ELSE.
-    interface-shlpfield+4(1) = '1'.
-    interface-valfield = 'GS_OUT-PROVINCE'.
-    APPEND interface TO shlp-interface.
-    interface-shlpfield+4(1) = '2'.
-    interface-valfield = 'GS_OUT-PROVINCE_DES'.
-    APPEND interface TO shlp-interface.
-    interface-shlpfield+4(1) = '4'.
-    interface-valfield = 'GS_OUT-CITY_DES'.
-    APPEND interface TO shlp-interface.
-  ENDIF.
-ENDFORM.
-
 FORM countyt_form TABLES record_tab STRUCTURE seahlpres
            CHANGING shlp TYPE shlp_descr_t
                     callcontrol LIKE ddshf4ctrl.

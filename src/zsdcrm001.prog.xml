@@ -19,7 +19,7 @@
       <TYPE>N</TYPE>
       <NEXTSCREEN>0900</NEXTSCREEN>
       <LINES>040</LINES>
-      <COLUMNS>186</COLUMNS>
+      <COLUMNS>187</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -134,7 +134,7 @@
        <NAME>GS_OUT-AUART</NAME>
        <TEXT>销售凭证类型______</TEXT>
        <LINE>003</LINE>
-       <COLUMN>031</COLUMN>
+       <COLUMN>032</COLUMN>
        <LENGTH>012</LENGTH>
        <VISLENGTH>012</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -149,7 +149,7 @@
        <NAME>GS_OUT-AUART</NAME>
        <TEXT>_____</TEXT>
        <LINE>003</LINE>
-       <COLUMN>044</COLUMN>
+       <COLUMN>045</COLUMN>
        <LENGTH>005</LENGTH>
        <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -162,11 +162,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-AUART_DES</NAME>
-       <TEXT>_____________</TEXT>
+       <TEXT>____________</TEXT>
        <LINE>003</LINE>
-       <COLUMN>050</COLUMN>
-       <LENGTH>013</LENGTH>
-       <VISLENGTH>013</VISLENGTH>
+       <COLUMN>051</COLUMN>
+       <LENGTH>012</LENGTH>
+       <VISLENGTH>012</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -527,7 +527,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>028</LINES>
-      <COLUMNS>156</COLUMNS>
+      <COLUMNS>157</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -625,11 +625,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZISCK_DES</NAME>
-       <TEXT>_____</TEXT>
+       <TEXT>__________</TEXT>
        <LINE>001</LINE>
        <COLUMN>061</COLUMN>
-       <LENGTH>005</LENGTH>
-       <VISLENGTH>005</VISLENGTH>
+       <LENGTH>010</LENGTH>
+       <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -775,11 +775,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VKORG</NAME>
-       <TEXT>________</TEXT>
+       <TEXT>_____</TEXT>
        <LINE>005</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>008</LENGTH>
-       <VISLENGTH>008</VISLENGTH>
+       <LENGTH>005</LENGTH>
+       <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -790,11 +790,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VKORG_DES</NAME>
-       <TEXT>_____________________________</TEXT>
+       <TEXT>___________________________</TEXT>
        <LINE>005</LINE>
-       <COLUMN>019</COLUMN>
-       <LENGTH>029</LENGTH>
-       <VISLENGTH>029</VISLENGTH>
+       <COLUMN>016</COLUMN>
+       <LENGTH>027</LENGTH>
+       <VISLENGTH>027</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -821,11 +821,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VTWEG</NAME>
-       <TEXT>_________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>005</LINE>
        <COLUMN>058</COLUMN>
-       <LENGTH>009</LENGTH>
-       <VISLENGTH>009</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -836,11 +836,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VTWEG_DES</NAME>
-       <TEXT>____________________________</TEXT>
+       <TEXT>________________</TEXT>
        <LINE>005</LINE>
-       <COLUMN>068</COLUMN>
-       <LENGTH>028</LENGTH>
-       <VISLENGTH>028</VISLENGTH>
+       <COLUMN>062</COLUMN>
+       <LENGTH>016</LENGTH>
+       <VISLENGTH>016</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -854,7 +854,7 @@
        <NAME>GS_OUT-SPART</NAME>
        <TEXT>产品组___</TEXT>
        <LINE>005</LINE>
-       <COLUMN>100</COLUMN>
+       <COLUMN>085</COLUMN>
        <LENGTH>006</LENGTH>
        <VISLENGTH>006</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -867,11 +867,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-SPART</NAME>
-       <TEXT>_______</TEXT>
+       <TEXT>___</TEXT>
        <LINE>005</LINE>
-       <COLUMN>107</COLUMN>
-       <LENGTH>007</LENGTH>
-       <VISLENGTH>007</VISLENGTH>
+       <COLUMN>092</COLUMN>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -882,11 +882,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-SPART_DES</NAME>
-       <TEXT>________________</TEXT>
+       <TEXT>__________</TEXT>
        <LINE>005</LINE>
-       <COLUMN>115</COLUMN>
-       <LENGTH>016</LENGTH>
-       <VISLENGTH>016</VISLENGTH>
+       <COLUMN>096</COLUMN>
+       <LENGTH>010</LENGTH>
+       <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -913,11 +913,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VKBUR</NAME>
-       <TEXT>____________</TEXT>
+       <TEXT>_____</TEXT>
        <LINE>006</LINE>
        <COLUMN>012</COLUMN>
-       <LENGTH>012</LENGTH>
-       <VISLENGTH>012</VISLENGTH>
+       <LENGTH>005</LENGTH>
+       <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -930,7 +930,7 @@
        <NAME>GS_OUT-VKBUR_DES</NAME>
        <TEXT>_________________________</TEXT>
        <LINE>006</LINE>
-       <COLUMN>025</COLUMN>
+       <COLUMN>018</COLUMN>
        <LENGTH>025</LENGTH>
        <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -946,7 +946,7 @@
        <NAME>GS_OUT-VKGRP</NAME>
        <TEXT>销售组___</TEXT>
        <LINE>006</LINE>
-       <COLUMN>059</COLUMN>
+       <COLUMN>049</COLUMN>
        <LENGTH>006</LENGTH>
        <VISLENGTH>006</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -959,11 +959,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VKGRP</NAME>
-       <TEXT>______________</TEXT>
+       <TEXT>____</TEXT>
        <LINE>006</LINE>
-       <COLUMN>066</COLUMN>
-       <LENGTH>014</LENGTH>
-       <VISLENGTH>014</VISLENGTH>
+       <COLUMN>056</COLUMN>
+       <LENGTH>004</LENGTH>
+       <VISLENGTH>004</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -974,11 +974,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-VKGRP_DES</NAME>
-       <TEXT>_____________________</TEXT>
+       <TEXT>_________________</TEXT>
        <LINE>006</LINE>
-       <COLUMN>081</COLUMN>
-       <LENGTH>021</LENGTH>
-       <VISLENGTH>021</VISLENGTH>
+       <COLUMN>061</COLUMN>
+       <LENGTH>017</LENGTH>
+       <VISLENGTH>017</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1028,7 +1028,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>028</LINES>
-      <COLUMNS>154</COLUMNS>
+      <COLUMNS>155</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -1066,11 +1066,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZHWLX</NAME>
-       <TEXT>___________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>001</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>011</LENGTH>
-       <VISLENGTH>011</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1081,11 +1081,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZHWLX_DES</NAME>
-       <TEXT>__________________</TEXT>
+       <TEXT>__________</TEXT>
        <LINE>001</LINE>
-       <COLUMN>022</COLUMN>
-       <LENGTH>018</LENGTH>
-       <VISLENGTH>018</VISLENGTH>
+       <COLUMN>014</COLUMN>
+       <LENGTH>010</LENGTH>
+       <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1099,7 +1099,7 @@
        <NAME>GS_OUT-ZCPYT</NAME>
        <TEXT>产品用途____</TEXT>
        <LINE>001</LINE>
-       <COLUMN>047</COLUMN>
+       <COLUMN>031</COLUMN>
        <LENGTH>008</LENGTH>
        <VISLENGTH>008</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1112,11 +1112,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZCPYT</NAME>
-       <TEXT>__________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>001</LINE>
-       <COLUMN>056</COLUMN>
-       <LENGTH>010</LENGTH>
-       <VISLENGTH>010</VISLENGTH>
+       <COLUMN>040</COLUMN>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1129,7 +1129,7 @@
        <NAME>GS_OUT-ZCPYT_DES</NAME>
        <TEXT>__________________</TEXT>
        <LINE>001</LINE>
-       <COLUMN>067</COLUMN>
+       <COLUMN>044</COLUMN>
        <LENGTH>018</LENGTH>
        <VISLENGTH>018</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1158,11 +1158,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZCPSX</NAME>
-       <TEXT>________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>002</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>008</LENGTH>
-       <VISLENGTH>008</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1173,11 +1173,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZCPSX_DES</NAME>
-       <TEXT>_____________________</TEXT>
+       <TEXT>__________</TEXT>
        <LINE>002</LINE>
-       <COLUMN>019</COLUMN>
-       <LENGTH>021</LENGTH>
-       <VISLENGTH>021</VISLENGTH>
+       <COLUMN>014</COLUMN>
+       <LENGTH>010</LENGTH>
+       <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1204,11 +1204,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZTT_DES</NAME>
-       <TEXT>______</TEXT>
+       <TEXT>___</TEXT>
        <LINE>004</LINE>
        <COLUMN>014</COLUMN>
-       <LENGTH>006</LENGTH>
-       <VISLENGTH>006</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1234,11 +1234,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZISJB_DES</NAME>
-       <TEXT>_________</TEXT>
+       <TEXT>_____________</TEXT>
        <LINE>004</LINE>
        <COLUMN>034</COLUMN>
-       <LENGTH>009</LENGTH>
-       <VISLENGTH>009</VISLENGTH>
+       <LENGTH>013</LENGTH>
+       <VISLENGTH>013</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1251,7 +1251,7 @@
        <NAME>GS_OUT-ZISCJ</NAME>
        <TEXT>是否重卷____</TEXT>
        <LINE>004</LINE>
-       <COLUMN>047</COLUMN>
+       <COLUMN>052</COLUMN>
        <LENGTH>008</LENGTH>
        <VISLENGTH>008</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1264,11 +1264,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZISCJ_DES</NAME>
-       <TEXT>________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>004</LINE>
-       <COLUMN>056</COLUMN>
-       <LENGTH>008</LENGTH>
-       <VISLENGTH>008</VISLENGTH>
+       <COLUMN>061</COLUMN>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1294,11 +1294,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-YL1_DES</NAME>
-       <TEXT>__________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>005</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>010</LENGTH>
-       <VISLENGTH>010</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1347,7 +1347,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>028</LINES>
-      <COLUMNS>153</COLUMNS>
+      <COLUMNS>154</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -1415,11 +1415,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZDJBL</NAME>
-       <TEXT>________</TEXT>
+       <TEXT>_____</TEXT>
        <LINE>001</LINE>
        <COLUMN>046</COLUMN>
-       <LENGTH>008</LENGTH>
-       <VISLENGTH>008</VISLENGTH>
+       <LENGTH>005</LENGTH>
+       <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1432,7 +1432,7 @@
        <NAME>GS_OUT-WAERK</NAME>
        <TEXT>凭证货币____</TEXT>
        <LINE>001</LINE>
-       <COLUMN>070</COLUMN>
+       <COLUMN>064</COLUMN>
        <LENGTH>008</LENGTH>
        <VISLENGTH>008</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1445,11 +1445,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-WAERK</NAME>
-       <TEXT>_____________</TEXT>
+       <TEXT>_____</TEXT>
        <LINE>001</LINE>
-       <COLUMN>079</COLUMN>
-       <LENGTH>013</LENGTH>
-       <VISLENGTH>013</VISLENGTH>
+       <COLUMN>073</COLUMN>
+       <LENGTH>005</LENGTH>
+       <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1475,11 +1475,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-KDGRP</NAME>
-       <TEXT>_________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>002</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>009</LENGTH>
-       <VISLENGTH>009</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1492,7 +1492,7 @@
        <NAME>GS_OUT-KDGRP_DES</NAME>
        <TEXT>________________</TEXT>
        <LINE>002</LINE>
-       <COLUMN>020</COLUMN>
+       <COLUMN>014</COLUMN>
        <LENGTH>016</LENGTH>
        <VISLENGTH>016</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1521,11 +1521,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-PLTYP</NAME>
-       <TEXT>__________</TEXT>
+       <TEXT>___</TEXT>
        <LINE>002</LINE>
        <COLUMN>050</COLUMN>
-       <LENGTH>010</LENGTH>
-       <VISLENGTH>010</VISLENGTH>
+       <LENGTH>003</LENGTH>
+       <VISLENGTH>003</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1538,7 +1538,7 @@
        <NAME>GS_OUT-KURSK</NAME>
        <TEXT>汇率__</TEXT>
        <LINE>002</LINE>
-       <COLUMN>070</COLUMN>
+       <COLUMN>064</COLUMN>
        <LENGTH>004</LENGTH>
        <VISLENGTH>004</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1551,11 +1551,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-KURSK</NAME>
-       <TEXT>_________________</TEXT>
+       <TEXT>__________</TEXT>
        <LINE>002</LINE>
-       <COLUMN>075</COLUMN>
-       <LENGTH>017</LENGTH>
-       <VISLENGTH>017</VISLENGTH>
+       <COLUMN>069</COLUMN>
+       <LENGTH>010</LENGTH>
+       <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1581,11 +1581,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-ZTERM</NAME>
-       <TEXT>_________</TEXT>
+       <TEXT>_____</TEXT>
        <LINE>003</LINE>
        <COLUMN>010</COLUMN>
-       <LENGTH>009</LENGTH>
-       <VISLENGTH>009</VISLENGTH>
+       <LENGTH>005</LENGTH>
+       <VISLENGTH>005</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1634,7 +1634,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>028</LINES>
-      <COLUMNS>156</COLUMNS>
+      <COLUMNS>157</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -1673,11 +1673,10 @@
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-YL5</NAME>
        <TEXT>_________</TEXT>
-       <DROPDOWN>L</DROPDOWN>
        <LINE>001</LINE>
        <COLUMN>010</COLUMN>
        <LENGTH>009</LENGTH>
-       <VISLENGTH>011</VISLENGTH>
+       <VISLENGTH>009</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1720,7 +1719,7 @@
        <NAME>GS_OUT-INCO2_L</NAME>
        <TEXT>国际贸易条款位置________</TEXT>
        <LINE>002</LINE>
-       <COLUMN>038</COLUMN>
+       <COLUMN>035</COLUMN>
        <LENGTH>016</LENGTH>
        <VISLENGTH>016</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1735,7 +1734,7 @@
        <NAME>GS_OUT-INCO2_L</NAME>
        <TEXT>_____________</TEXT>
        <LINE>002</LINE>
-       <COLUMN>055</COLUMN>
+       <COLUMN>052</COLUMN>
        <LENGTH>013</LENGTH>
        <VISLENGTH>013</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1763,12 +1762,12 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-PROVINCE</NAME>
-       <TEXT>_________</TEXT>
+       <TEXT>_____________</TEXT>
        <DROPDOWN>L</DROPDOWN>
        <LINE>003</LINE>
        <COLUMN>004</COLUMN>
-       <LENGTH>009</LENGTH>
-       <VISLENGTH>022</VISLENGTH>
+       <LENGTH>013</LENGTH>
+       <VISLENGTH>020</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <GROUP1>G1</GROUP1>
        <PUSH_FCODE>P</PUSH_FCODE>
@@ -1782,11 +1781,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-PROVINCE_DES</NAME>
-       <TEXT>_________________</TEXT>
+       <TEXT>_______________</TEXT>
        <LINE>003</LINE>
-       <COLUMN>027</COLUMN>
-       <LENGTH>017</LENGTH>
-       <VISLENGTH>017</VISLENGTH>
+       <COLUMN>025</COLUMN>
+       <LENGTH>015</LENGTH>
+       <VISLENGTH>015</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1800,7 +1799,7 @@
        <NAME>GS_OUT-CITY</NAME>
        <TEXT>市_</TEXT>
        <LINE>003</LINE>
-       <COLUMN>046</COLUMN>
+       <COLUMN>043</COLUMN>
        <LENGTH>002</LENGTH>
        <VISLENGTH>002</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1813,12 +1812,12 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-CITY</NAME>
-       <TEXT>_____________</TEXT>
+       <TEXT>__________________</TEXT>
        <DROPDOWN>L</DROPDOWN>
        <LINE>003</LINE>
-       <COLUMN>049</COLUMN>
-       <LENGTH>013</LENGTH>
-       <VISLENGTH>023</VISLENGTH>
+       <COLUMN>046</COLUMN>
+       <LENGTH>018</LENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <GROUP1>G1</GROUP1>
        <PUSH_FCODE>CI</PUSH_FCODE>
@@ -1832,11 +1831,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-CITY_DES</NAME>
-       <TEXT>______________________</TEXT>
+       <TEXT>__________________</TEXT>
        <LINE>003</LINE>
-       <COLUMN>073</COLUMN>
-       <LENGTH>022</LENGTH>
-       <VISLENGTH>022</VISLENGTH>
+       <COLUMN>072</COLUMN>
+       <LENGTH>018</LENGTH>
+       <VISLENGTH>018</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1850,7 +1849,7 @@
        <NAME>GS_OUT-COUNTY</NAME>
        <TEXT>县_</TEXT>
        <LINE>003</LINE>
-       <COLUMN>098</COLUMN>
+       <COLUMN>095</COLUMN>
        <LENGTH>002</LENGTH>
        <VISLENGTH>002</VISLENGTH>
        <HEIGHT>001</HEIGHT>
@@ -1866,9 +1865,9 @@
        <TEXT>_____________</TEXT>
        <DROPDOWN>L</DROPDOWN>
        <LINE>003</LINE>
-       <COLUMN>101</COLUMN>
+       <COLUMN>098</COLUMN>
        <LENGTH>013</LENGTH>
-       <VISLENGTH>026</VISLENGTH>
+       <VISLENGTH>025</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <GROUP1>G1</GROUP1>
        <PUSH_FCODE>CO</PUSH_FCODE>
@@ -1882,11 +1881,11 @@
        <CONT_NAME>SCREEN</CONT_NAME>
        <TYPE>TEMPLATE</TYPE>
        <NAME>GS_OUT-COUNTY_DES</NAME>
-       <TEXT>_________________</TEXT>
+       <TEXT>________________________</TEXT>
        <LINE>003</LINE>
-       <COLUMN>128</COLUMN>
-       <LENGTH>017</LENGTH>
-       <VISLENGTH>017</VISLENGTH>
+       <COLUMN>124</COLUMN>
+       <LENGTH>024</LENGTH>
+       <VISLENGTH>024</VISLENGTH>
        <HEIGHT>001</HEIGHT>
        <FORMAT>CHAR</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
@@ -1933,17 +1932,19 @@
       </RPY_DYFLOW>
       <RPY_DYFLOW/>
       <RPY_DYFLOW>
-       <LINE>PROCESS ON VALUE-REQUEST.</LINE>
-      </RPY_DYFLOW>
-      <RPY_DYFLOW/>
-      <RPY_DYFLOW>
-       <LINE>  FIELD gs_out-province MODULE zprovincef4.</LINE>
+       <LINE>*PROCESS ON VALUE-REQUEST.</LINE>
       </RPY_DYFLOW>
       <RPY_DYFLOW>
-       <LINE>  FIELD gs_out-city     MODULE zcityf4.</LINE>
+       <LINE>*</LINE>
       </RPY_DYFLOW>
       <RPY_DYFLOW>
-       <LINE>  FIELD gs_out-county   MODULE zcountyf4.</LINE>
+       <LINE>*  FIELD gs_out-province MODULE zprovincef4.</LINE>
+      </RPY_DYFLOW>
+      <RPY_DYFLOW>
+       <LINE>*  FIELD gs_out-city     MODULE zcityf4.</LINE>
+      </RPY_DYFLOW>
+      <RPY_DYFLOW>
+       <LINE>*  FIELD gs_out-county   MODULE zcountyf4.</LINE>
       </RPY_DYFLOW>
      </FLOW_LOGIC>
     </item>

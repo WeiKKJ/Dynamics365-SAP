@@ -32,6 +32,7 @@ INITIALIZATION.
 
 START-OF-SELECTION.
   PERFORM savelog(zreplog) USING sy-repid '' IF FOUND.
+  PERFORM init.
   PERFORM getdata.
   PERFORM updatelog(zreplog) IF FOUND.
   PERFORM outdata.
@@ -46,7 +47,17 @@ FORM auth_check.
     MESSAGE e000(oo) WITH '无事务码权限:'(m01) sy-tcode.
   ENDIF.
 ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form init
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM init .
 
+ENDFORM.
 *&---------------------------------------------------------------------*
 *& getdata
 *&---------------------------------------------------------------------*
@@ -179,9 +190,9 @@ FORM getdata.
       gs_out-auart_des = wa7-bezei.
     ENDIF.
     IF gs_out-zisck = 'X'.
-      gs_out-zisck_des = '是'.
+      gs_out-zisck_des = '出口'.
     ELSE.
-      gs_out-zisck_des = '否'.
+      gs_out-zisck_des = '非出口'.
     ENDIF.
     IF gs_out-ztt = 'X'.
       gs_out-ztt_des = '是'.
@@ -643,6 +654,11 @@ FORM fillfldct .
             'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'  ,
             'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '  ,
             'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态   '  .
+    WHEN OTHERS.
+      PERFORM catset TABLES gt_fldct_item USING:
+            'POSNR ' 'ZTCRM_SO_ITEM' 'POSNR ' '项目     '  ,
+            'MATNR ' 'ZTCRM_SO_ITEM' 'MATNR ' '物料编码 '   ,
+            'MAKTX ' 'MAKT' 'MAKTX ' '物料描述   '    .
   ENDCASE.
   LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>).
     CASE <fldct>-fieldname.

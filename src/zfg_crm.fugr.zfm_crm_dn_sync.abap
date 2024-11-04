@@ -43,7 +43,7 @@ FUNCTION zfm_crm_dn_sync .
   <header>-value   = crmappid .
   <header>-cdata   = '' .
   <header>-xdata   = '' .
-  READ TABLE it_xlikp INTO DATA(v_xlikp) INDEX 1.
+*  READ TABLE it_xlikp INTO DATA(v_xlikp) INDEX 1.
   " 交货单明细  14.09.2024 11:46:43 by kkw
   GET RUN TIME FIELD t1.
   DO.
@@ -59,13 +59,13 @@ FUNCTION zfm_crm_dn_sync .
       lips~vrkme
       FROM likp
       JOIN lips ON likp~vbeln = lips~vbeln
-*        LEFT JOIN vbuk ON likp~vbeln = vbuk~vbeln
-      WHERE likp~vbeln = @v_xlikp-vbeln
-      ORDER BY likp~vbeln,lips~posnr
+      FOR ALL ENTRIES IN @it_xlikp
+      WHERE likp~vbeln = @it_xlikp-vbeln
       INTO TABLE @DATA(lt_dn)
       .
     IF sy-subrc EQ 0.
       EXIT.
+      SORT lt_dn BY vbeln posnr.
     ENDIF.
     GET RUN TIME FIELD t2.
     secds = ( t2 - t1 ) / 1000000.

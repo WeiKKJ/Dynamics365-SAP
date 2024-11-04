@@ -7,7 +7,11 @@
 *&
 *&---------------------------------------------------------------------*
 MODULE status_0900 OUTPUT.
-  SET PF-STATUS 'STA900'.
+  DATA extab TYPE slis_t_extab.
+  IF gs_out-state = '已处理'.
+    APPEND 'SO' TO extab.
+  ENDIF.
+  SET PF-STATUS 'STA900' EXCLUDING extab.
   SET TITLEBAR 'TIT900'.
 ENDMODULE.
 *&---------------------------------------------------------------------*
