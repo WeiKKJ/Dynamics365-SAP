@@ -438,10 +438,20 @@ FORM getitems .
     gs_out-vbeln = wa_countvn-vbeln.
     gs_out-auart = wa_countvn-auart.
   ENDIF.
-  PERFORM ezsdr IN PROGRAM saplzfg_crm USING '' gs_out-new_contractid CHANGING msg.
   IF msg IS NOT INITIAL.
     MESSAGE msg TYPE 'E'.
   ENDIF.
+  LOOP AT gt_item TRANSPORTING NO FIELDS WHERE action NE ''.
+    EXIT.
+  ENDLOOP.
+  IF sy-subrc EQ 0.
+    gs_out-state = '待处理'.
+  ELSE.
+    gs_out-state = '已处理'.
+    PERFORM va03 IN PROGRAM zpubform IF FOUND USING gs_out-vbeln.
+    EXIT.
+  ENDIF.
+
 
   SELECT
     ttxit~*
@@ -536,14 +546,6 @@ FORM getitems .
     PERFORM repo_fill_simple .
     o_textedit->delete_text( ).
   ENDIF.
-  LOOP AT gt_item TRANSPORTING NO FIELDS WHERE action NE ''.
-    EXIT.
-  ENDLOOP.
-  IF sy-subrc EQ 0.
-    gs_out-state = '待处理'.
-  ELSE.
-    gs_out-state = '已处理'.
-  ENDIF.
 
   LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
     READ TABLE gt_longtext_im INTO gs_longtext_im WITH KEY sapno = gs_out-new_contractid tdid = <lt_ttxit>-tdid BINARY SEARCH.
@@ -568,6 +570,7 @@ FORM getitems .
   ENDLOOP.
   MODIFY gt_out FROM gs_out INDEX <row>-row_id.
   PERFORM fillfldct.
+  PERFORM ezsdr IN PROGRAM saplzfg_crm USING '' gs_out-new_contractid CHANGING msg.
   CALL SCREEN 900.
 ENDFORM.
 

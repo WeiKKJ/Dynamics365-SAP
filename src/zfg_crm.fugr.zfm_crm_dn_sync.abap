@@ -111,11 +111,12 @@ FUNCTION zfm_crm_dn_sync .
     <main_data>-name           = <lt_vbfav>-vbeln .
     <main_data>-date           = <group>-bldat .
     <main_data>-deliverytime   = <group>-wadat_ist .
-    IF tcode = 'VL09' AND ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
+*    IF tcode = 'VL09' AND ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
+    IF ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
       SELECT SINGLE budat
         FROM mkpf
         WHERE mkpf~le_vbeln = @<lt_vbfav>-vbeln
-        AND mkpf~tcode2 = 'VL09'
+        AND mkpf~tcode2 = @sy-tcode
         INTO @<main_data>-deliverytime.
     ENDIF.
     CASE <group>-wbstk .

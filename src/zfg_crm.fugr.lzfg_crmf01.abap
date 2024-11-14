@@ -174,11 +174,10 @@ FORM fillcond USING p_posnr
   o_condx-cond_count = '01'.
   o_cond-cond_type   = p_kschl.
   o_condx-cond_type  = p_kschl.
-  o_cond-cond_p_unt = '1'.
-  o_condx-cond_p_unt = 'X'.
+*  o_cond-cond_p_unt = '1'.
+*  o_condx-cond_p_unt = 'X'.
   o_cond-cond_value  = p_kbetr.
   o_condx-cond_value = 'X'.
-*  O_COND-CONDVALUE   = P_KBETR * 10.
   o_cond-currency    = p_vbak-waerk.
   IF t683s IS NOT INITIAL.
     o_condx-updateflag = 'U'.

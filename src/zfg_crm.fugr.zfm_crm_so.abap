@@ -160,10 +160,13 @@ FUNCTION zfm_crm_so.
       checkinitial <mem>-vrkme mes.
       mes = '第' && tabix && '行,' && '订单数量'         .
       checkinitial <mem>-kwmeng mes.
-      mes = '第' && tabix && '行,' && '价格'           .
-      checkinitial <mem>-kbetr mes.
+*      mes = '第' && tabix && '行,' && '价格'           .
+*      checkinitial <mem>-kbetr mes.
       mes = '第' && tabix && '行,' && '税率'           .
       checkinitial <mem>-mwskz mes.
+      mes = '第' && tabix && '行,' && '厚度类型'           .
+      checkinitial <mem>-houdulx mes.
+
       comp = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( <mem> ) )->components.
       LOOP AT comp ASSIGNING <comp>.
         ASSIGN COMPONENT <comp>-name OF STRUCTURE <mem> TO <data_value>.
@@ -282,6 +285,15 @@ FUNCTION zfm_crm_so.
         ELSE.
           IF NOT <lt_item>-action = 'I'.
             rtmsg = |单ID[{ data-new_contractid }]未存在，只能做创建操作|.
+            fillmsg 'E' rtmsg.
+          ENDIF.
+          SELECT
+            COUNT(*)
+            FROM vbkd
+            WHERE bstkd = @data-bstkd
+            .
+          IF sy-subrc = 0.
+            rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
             fillmsg 'E' rtmsg.
           ENDIF.
         ENDIF.
@@ -452,7 +464,7 @@ FUNCTION zfm_crm_so.
         sales_schedules_in-itm_number = posnr .
         sales_schedules_in-sched_line = '0001'.
         sales_schedules_in-req_qty    = <item>-kwmeng.
-        sales_schedules_in-req_date   = sy-datum .
+        sales_schedules_in-req_date   = <item>-edatu .
         PERFORM setbapix USING sales_schedules_in CHANGING sales_schedules_inx.
         APPEND: sales_schedules_in,sales_schedules_inx.
 
@@ -492,14 +504,16 @@ FUNCTION zfm_crm_so.
             UNASSIGN <zlongtext>.
           ENDIF.
         ENDLOOP.
-        CLEAR:sales_conditions_in,sales_conditions_inx.
-        sales_conditions_in-itm_number = posnr.
-        sales_conditions_in-cond_type  = 'ZPR0'.
-        sales_conditions_in-cond_value = <item>-kbetr.
-        sales_conditions_in-cond_p_unt = 1.
-        sales_conditions_in-currency   = data-waerk.
-        PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
-        APPEND:sales_conditions_in,sales_conditions_inx.
+        IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
+          CLEAR:sales_conditions_in,sales_conditions_inx.
+          sales_conditions_in-itm_number = posnr.
+          sales_conditions_in-cond_type  = 'ZPR0'.
+          sales_conditions_in-cond_value = <item>-kbetr.
+*          sales_conditions_in-cond_p_unt = 1.
+          sales_conditions_in-currency   = data-waerk.
+          PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
+          APPEND:sales_conditions_in,sales_conditions_inx.
+        ENDIF.
       ENDLOOP.
 **********************************
       SET UPDATE TASK LOCAL.
@@ -666,7 +680,7 @@ FUNCTION zfm_crm_so.
           schedule_lines-itm_number = it_vbap-posnr.
           schedule_lines-sched_line = '0001'.
           schedule_lines-req_qty    = <item>-kwmeng.
-          schedule_lines-req_date   = sy-datum .
+          schedule_lines-req_date   = <item>-edatu .
           PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
           schedule_linesx-updateflag = 'U'.
           APPEND:schedule_lines,schedule_linesx.
@@ -713,9 +727,11 @@ FUNCTION zfm_crm_so.
             WHERE vbak~vbeln = @data-vbeln.
 
           CLEAR:conditions_in,conditions_inx.
-          PERFORM fillcond USING it_vbap-posnr 'ZPR0'  <item>-kbetr vbak
-                CHANGING conditions_in conditions_inx.
-          APPEND:conditions_in,conditions_inx.
+          IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
+            PERFORM fillcond USING it_vbap-posnr 'ZPR0'  <item>-kbetr vbak
+                  CHANGING conditions_in conditions_inx.
+            APPEND:conditions_in,conditions_inx.
+          ENDIF.
         ELSE.
           IF <item>-posnr IS NOT INITIAL.
             posnr = <item>-posnr.
@@ -738,7 +754,7 @@ FUNCTION zfm_crm_so.
           schedule_lines-itm_number = <item>-posnr.
           schedule_lines-sched_line = '0001'.
           schedule_lines-req_qty    = <item>-kwmeng.
-          schedule_lines-req_date   = sy-datum .
+          schedule_lines-req_date   = <item>-edatu .
           PERFORM setbapix USING order_item_in CHANGING order_item_inx.
           PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
           schedule_linesx-updateflag = 'I'.
@@ -781,15 +797,17 @@ FUNCTION zfm_crm_so.
           APPEND extensionin.
 
           "价格
-          CLEAR:conditions_in,conditions_inx.
-          conditions_in-itm_number = <item>-posnr.
-          conditions_in-cond_type  = 'ZPR0'.
-          conditions_in-cond_value =  <item>-kbetr .
-          conditions_in-cond_p_unt = 1.
-          conditions_in-currency   = data-waerk.
-          PERFORM setbapix USING conditions_in CHANGING conditions_inx.
-          conditions_inx-updateflag = 'I'.
-          APPEND:conditions_in,conditions_inx.
+          IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
+            CLEAR:conditions_in,conditions_inx.
+            conditions_in-itm_number = <item>-posnr.
+            conditions_in-cond_type  = 'ZPR0'.
+            conditions_in-cond_value =  <item>-kbetr .
+*          conditions_in-cond_p_unt = 1.
+            conditions_in-currency   = data-waerk.
+            PERFORM setbapix USING conditions_in CHANGING conditions_inx.
+            conditions_inx-updateflag = 'I'.
+            APPEND:conditions_in,conditions_inx.
+          ENDIF.
         ENDIF.
       ENDLOOP.
 
