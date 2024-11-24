@@ -76,21 +76,23 @@ FUNCTION zfm_crm_dn_sync .
   ENDDO.
   " 找交货单对应的销售合同  14.09.2024 11:46:55 by kkw
   IF lt_dn IS NOT INITIAL.
-    SELECT
+    SELECT DISTINCT
       vbfa~vbeln,
       vbfa~posnn AS posnr,
-      vbak~new_contractid,
-      vbap~new_contractdetailid
+*& kkw 31571 子 SAP-CRM对接 / 3.5.2-3.2.2 交货单创建&更新&删除-20241121新加逻辑：
+      CASE WHEN vbak~new_contractid IS INITIAL THEN ztcrm_so_init~new_contractid ELSE vbak~new_contractid END AS new_contractid,
+      CASE WHEN vbak~new_contractid IS INITIAL THEN ztcrm_so_init~new_contractdetailid ELSE vbap~new_contractdetailid END AS new_contractdetailid,
+*& End  31571 子 SAP-CRM对接 / 3.5.2-3.2.2 交货单创建&更新&删除-20241121新加逻辑： 21.11.2024 14:36:53
+      vbfa~vbtyp_v
       FROM vbfa
       JOIN vbap ON vbfa~vbelv = vbap~vbeln AND vbfa~posnv = vbap~posnr
       JOIN vbak ON vbap~vbeln = vbak~vbeln
-      FOR ALL ENTRIES IN @lt_dn
-      WHERE vbfa~vbeln = @lt_dn-vbeln
-      AND vbfa~posnn = @lt_dn-posnr
-      AND vbfa~vbtyp_v = 'G'
+      JOIN @lt_dn AS lt_dn ON vbfa~vbeln = lt_dn~vbeln AND vbfa~posnn = lt_dn~posnr
+      LEFT JOIN ztcrm_so_init ON vbap~vbeln = ztcrm_so_init~vbeln AND vbap~posnr = ztcrm_so_init~posnr
+      WHERE vbfa~vbtyp_v IN ( 'G','H' )
       INTO TABLE @DATA(lt_vbfa)
       .
-    SORT lt_vbfa BY vbeln posnr.
+    SORT lt_vbfa BY vbtyp_v vbeln posnr.
   ENDIF.
 
   data-func = 'DeliverySync'.
@@ -98,7 +100,7 @@ FUNCTION zfm_crm_dn_sync .
     wadat_ist = <lt_dn>-wadat_ist kunnr = <lt_dn>-kunnr wbstk = <lt_dn>-wbstk
     index = GROUP INDEX size = GROUP SIZE
      ) ASSIGNING FIELD-SYMBOL(<group>).
-    READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfav>) WITH KEY vbeln = <group>-vbeln BINARY SEARCH.
+    READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfav>) WITH KEY vbtyp_v = 'G' vbeln = <group>-vbeln BINARY SEARCH.
     IF sy-subrc EQ 0.
       IF <lt_vbfav>-new_contractdetailid IS INITIAL.
         CONTINUE.
@@ -144,7 +146,7 @@ FUNCTION zfm_crm_dn_sync .
 *    ENDIF.
     <main_data>-accountid      = <group>-kunnr.
     LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
-      READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfa>) WITH KEY vbeln = <mem>-vbeln posnr = <mem>-posnr BINARY SEARCH.
+      READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfa>) WITH KEY vbtyp_v = 'G' vbeln = <mem>-vbeln posnr = <mem>-posnr BINARY SEARCH.
       IF sy-subrc EQ 0.
         IF <lt_vbfa>-new_contractdetailid IS INITIAL.
 *          rtmsg = |发货单[{ <group>-vbeln }]，行[{ <mem>-posnr }]不是经由CRM创建，状态变更未同步CRM|.
@@ -156,7 +158,12 @@ FUNCTION zfm_crm_dn_sync .
       INSERT INITIAL LINE INTO TABLE <main_data>-deliverydetail ASSIGNING FIELD-SYMBOL(<deliverydetail>).
       <deliverydetail>-name               = <mem>-posnr .
       <deliverydetail>-productid          = <mem>-matnr .
-      <deliverydetail>-quantity           = <mem>-lfimg .
+      READ TABLE lt_vbfa ASSIGNING FIELD-SYMBOL(<lt_vbfh>) WITH KEY vbtyp_v = 'H' vbeln = <mem>-vbeln posnr = <mem>-posnr BINARY SEARCH.
+      IF sy-subrc EQ 0.
+        <deliverydetail>-quantity           = <mem>-lfimg * -1.
+      ELSE.
+        <deliverydetail>-quantity           = <mem>-lfimg .
+      ENDIF.
       <deliverydetail>-vrkme              = <mem>-vrkme .
       <main_data>-contractid     = <lt_vbfa>-new_contractid.
       <deliverydetail>-contractdetailid   = <lt_vbfa>-new_contractdetailid .

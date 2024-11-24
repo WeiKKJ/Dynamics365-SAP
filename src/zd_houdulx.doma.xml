@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_DOMA" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <DD01V>
+    <DOMNAME>ZD_HOUDULX</DOMNAME>
+    <DDLANGUAGE>1</DDLANGUAGE>
+    <DATATYPE>CHAR</DATATYPE>
+    <LENG>000005</LENG>
+    <OUTPUTLEN>000005</OUTPUTLEN>
+    <VALEXI>X</VALEXI>
+    <DDTEXT>厚度类型</DDTEXT>
+   </DD01V>
+   <DD07V_TAB>
+    <DD07V>
+     <VALPOS>0001</VALPOS>
+     <DDLANGUAGE>1</DDLANGUAGE>
+     <DOMVALUE_L>BMT</DOMVALUE_L>
+     <DDTEXT>BMT</DDTEXT>
+    </DD07V>
+    <DD07V>
+     <VALPOS>0002</VALPOS>
+     <DDLANGUAGE>1</DDLANGUAGE>
+     <DOMVALUE_L>TCT</DOMVALUE_L>
+     <DDTEXT>TCT</DDTEXT>
+    </DD07V>
+    <DD07V>
+     <VALPOS>0003</VALPOS>
+     <DDLANGUAGE>1</DDLANGUAGE>
+     <DOMVALUE_L>TCTP</DOMVALUE_L>
+     <DDTEXT>TCTP</DDTEXT>
+    </DD07V>
+   </DD07V_TAB>
+  </asx:values>
+ </asx:abap>
+</abapGit>

@@ -268,3 +268,21 @@ FORM setbapix USING fs CHANGING fsx.
     ENDIF.
   ENDLOOP.
 ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form CONCATENATEzqdhtgg
+*&---------------------------------------------------------------------*
+*& 31568 子 SAP-CRM对接 / 3.5.4.3 销售合同创建
+*& 20241121：描述：处理合同时，根据合同的厚度类型拼接合同明细行的签订合同规格字段
+*&---------------------------------------------------------------------*
+*&      --> <ITEM>
+*&      <-- WA_EXTP_ZQDHTGG
+*&---------------------------------------------------------------------*
+FORM CONCATENATEzqdhtgg  USING VALUE(p_item) TYPE zscrm_so_item
+                         CHANGING p_zqdhtgg TYPE bape_vbap-zqdhtgg.
+  DATA(assignhoudulx) = to_upper( CONV string( |p_item-{ p_item-houdulx }houdu| ) ).
+  ASSIGN (assignhoudulx) TO FIELD-SYMBOL(<assignhoudulxv>).
+  IF sy-subrc EQ 0.
+    p_zqdhtgg = |{ <assignhoudulxv> }{ p_item-houdulx }*{ p_item-width }|.
+    UNASSIGN <assignhoudulxv>.
+  ENDIF.
+ENDFORM.

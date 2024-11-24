@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<abapGit version="v1.0.0" serializer="LCL_OBJECT_DTEL" serializer_version="v1.0.0">
+ <asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+  <asx:values>
+   <DD04V>
+    <ROLLNAME>ZE_TCTHOOUDU</ROLLNAME>
+    <DDLANGUAGE>1</DDLANGUAGE>
+    <DOMNAME>ZD_HOUDU</DOMNAME>
+    <HEADLEN>05</HEADLEN>
+    <SCRLEN1>05</SCRLEN1>
+    <SCRLEN2>05</SCRLEN2>
+    <SCRLEN3>05</SCRLEN3>
+    <DDTEXT>TCT厚度</DDTEXT>
+    <REPTEXT>TCT厚度</REPTEXT>
+    <SCRTEXT_S>TCT厚度</SCRTEXT_S>
+    <SCRTEXT_M>TCT厚度</SCRTEXT_M>
+    <SCRTEXT_L>TCT厚度</SCRTEXT_L>
+    <DTELMASTER>1</DTELMASTER>
+    <REFKIND>D</REFKIND>
+   </DD04V>
+  </asx:values>
+ </asx:abap>
+</abapGit>

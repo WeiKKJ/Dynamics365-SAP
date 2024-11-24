@@ -471,6 +471,7 @@ FUNCTION zfm_crm_so.
 *增强字段
         CLEAR:extensionin,wa_extp.
         MOVE-CORRESPONDING <item> TO wa_extp.
+        PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
         extensionin-structure = 'BAPE_VBAP'.
         extensionin+30 = wa_extp.
         APPEND extensionin.
@@ -711,6 +712,7 @@ FUNCTION zfm_crm_so.
 *增强字段
           CLEAR:extensionin,wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
+          PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
           extensionin-structure = 'BAPE_VBAP'.
           extensionin+30 = wa_extp.
           APPEND extensionin.
@@ -787,6 +789,7 @@ FUNCTION zfm_crm_so.
 *增强字段
           CLEAR:extensionin,wa_extp.
           MOVE-CORRESPONDING <item> TO wa_extp.
+          PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
           extensionin-structure = 'BAPE_VBAP'.
           extensionin+30 = wa_extp.
           APPEND extensionin.
