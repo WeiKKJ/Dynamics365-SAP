@@ -138,6 +138,7 @@ FORM frm_handle_data_changed  USING    p_er_data_changed TYPE REF TO cl_alv_chan
         IF sy-subrc NE 0.
           CLEAR <item>-maktx.
         ENDIF.
+        PERFORM set_style USING mod-value CHANGING <item>.
     ENDCASE.
   ENDLOOP.
 ENDFORM.

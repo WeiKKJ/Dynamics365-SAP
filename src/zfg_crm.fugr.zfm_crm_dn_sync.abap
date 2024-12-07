@@ -61,6 +61,7 @@ FUNCTION zfm_crm_dn_sync .
       JOIN lips ON likp~vbeln = lips~vbeln
       FOR ALL ENTRIES IN @it_xlikp
       WHERE likp~vbeln = @it_xlikp-vbeln
+      AND lips~matnr <> 'M0518012864'
       INTO TABLE @DATA(lt_dn)
       .
     IF sy-subrc EQ 0.
@@ -115,11 +116,12 @@ FUNCTION zfm_crm_dn_sync .
     <main_data>-deliverytime   = <group>-wadat_ist .
 *    IF tcode = 'VL09' AND ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
     IF ( <group>-wadat_ist IS INITIAL OR <group>-wadat_ist = '00000000' ).
-      SELECT SINGLE budat
-        FROM mkpf
-        WHERE mkpf~le_vbeln = @<lt_vbfav>-vbeln
-        AND mkpf~tcode2 = @sy-tcode
-        INTO @<main_data>-deliverytime.
+*      SELECT SINGLE budat
+*       FROM mkpf
+*        WHERE mkpf~le_vbeln = @<lt_vbfav>-vbeln
+*        AND mkpf~tcode2 = @sy-tcode
+*        INTO @<main_data>-deliverytime.
+      <main_data>-deliverytime           = <group>-bldat .
     ENDIF.
     CASE <group>-wbstk .
       WHEN 'A'.

@@ -31,7 +31,6 @@ FUNCTION zfm_crm_so.
           matnr  TYPE vbap-matnr,
           werks  TYPE vbap-werks,
           pstyv  TYPE vbap-pstyv,
-          bstkd  TYPE vbkd-bstkd,
           znodel TYPE char1,
           zmatnr TYPE char1,
         END OF zsvbap.
@@ -46,6 +45,7 @@ FUNCTION zfm_crm_so.
        sales_items_in       TYPE STANDARD TABLE OF bapisditm WITH HEADER LINE,
        sales_items_inx      TYPE STANDARD TABLE OF bapisditmx WITH HEADER LINE,
        sales_partners       TYPE STANDARD TABLE OF bapiparnr WITH HEADER LINE,
+       sales_partnersc      TYPE TABLE OF bapiparnrc WITH HEADER LINE,
        sales_schedules_in   TYPE STANDARD TABLE OF bapischdl WITH HEADER LINE,
        sales_schedules_inx  TYPE STANDARD TABLE OF bapischdlx WITH HEADER LINE,
        sales_conditions_in  TYPE STANDARD TABLE OF bapicond WITH HEADER LINE,
@@ -62,6 +62,7 @@ FUNCTION zfm_crm_so.
        order_text      TYPE TABLE OF bapisdtext WITH HEADER LINE,
        conditions_in   TYPE TABLE OF bapicond   WITH HEADER LINE,
        conditions_inx  TYPE TABLE OF bapicondx  WITH HEADER LINE.
+  DATA:updateflag TYPE updkz_d.
 
   DATA:BEGIN OF text_stream OCCURS 0,
          text TYPE char2048,
@@ -77,15 +78,22 @@ FUNCTION zfm_crm_so.
 **********************************
   DATA:wa_head TYPE ztcrm_so_head,
        lt_item TYPE TABLE OF ztcrm_so_item.
-  TYPES:BEGIN OF ty_so,
-          ak TYPE vbak,
-          ap TYPE TABLE OF vbap WITH DEFAULT KEY,
+  TYPES:BEGIN OF ty_ak,
+          ak       TYPE vbak,
+          bstkd    TYPE vbkd-bstkd,
+          kunnr_ag TYPE kunnr,
+          kunnr_we TYPE kunnr,
+        END OF ty_ak.
+  TYPES:BEGIN OF ty_so.
+          INCLUDE TYPE ty_ak.
+  TYPES:  ap TYPE TABLE OF vbap WITH DEFAULT KEY,
         END OF ty_so.
   DATA:BEGIN OF wa_check,
          head TYPE ztcrm_so_head,
          item TYPE TABLE OF ztcrm_so_item,
          so   TYPE TABLE OF ty_so,
        END OF wa_check.
+
   PERFORM ezsdr USING '' data-new_contractid CHANGING rtmsg.
   IF rtmsg IS NOT INITIAL.
     fillmsg 'E' rtmsg.
@@ -99,6 +107,7 @@ FUNCTION zfm_crm_so.
   "补0
   PERFORM addzero(zpubform) CHANGING data-kunnr_we.
   PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
+  PERFORM addzero(zpubform) CHANGING data-vbeln.
   " 数据校验  24.09.2024 15:18:51 by kkw
   checkinitial data-new_contractid       'CRM合同ID'            .
   checkinitial data-bstkd       '客户参考'            .
@@ -148,8 +157,8 @@ FUNCTION zfm_crm_so.
       checkinitial <mem>-groes mes.
       mes = '第' && tabix && '行,' && 'CRM合同明细ID'           .
       checkinitial <mem>-new_contractdetailid mes.
-      mes = '第' && tabix && '行,' && '厚度'           .
-      checkinitial <mem>-houdu mes.
+*      mes = '第' && tabix && '行,' && '厚度'           .
+*      checkinitial <mem>-houdu mes.
       mes = '第' && tabix && '行,' && '宽度'           .
       checkinitial <mem>-width mes.
       mes = '第' && tabix && '行,' && '材质'           .
@@ -206,30 +215,33 @@ FUNCTION zfm_crm_so.
 
   " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
   SELECT SINGLE
-    new_contractid,
-    vbeln
+    *
     FROM ztcrm_so_head
     WHERE new_contractid = @data-new_contractid
     INTO CORRESPONDING FIELDS OF @wa_check-head
     .
   SELECT
-    new_contractid,
-    new_contractdetailid,
-    posnr
+    *
     FROM ztcrm_so_item
     WHERE new_contractid = @data-new_contractid
     INTO CORRESPONDING FIELDS OF TABLE @wa_check-item
     .
   SELECT
     vbak~vbeln,
-    vbak~new_contractid
+    vbak~new_contractid,
+    vbkd~bstkd,
+    vbak~kunnr AS kunnr_ag,
+    we~kunnr AS kunnr_we
     FROM vbak
+    LEFT JOIN vbkd ON vbak~vbeln = vbkd~vbeln AND vbkd~posnr = '000000'
+    LEFT JOIN vbpa AS we ON vbak~vbeln = we~vbeln AND we~parvw = 'WE' AND we~posnr = '000000'
     WHERE new_contractid = @data-new_contractid
     AND vbtyp = 'G'
     INTO TABLE @DATA(lt_vbak)
     .
   LOOP AT lt_vbak ASSIGNING FIELD-SYMBOL(<lt_vbak>).
     INSERT INITIAL LINE INTO TABLE wa_check-so ASSIGNING FIELD-SYMBOL(<so>).
+    MOVE-CORRESPONDING <lt_vbak> TO <so>.
     MOVE-CORRESPONDING <lt_vbak> TO <so>-ak.
     SELECT vbeln,posnr,new_contractdetailid FROM vbap WHERE vbeln = @<lt_vbak>-vbeln INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
   ENDLOOP.
@@ -248,6 +260,21 @@ FUNCTION zfm_crm_so.
     ELSE.
       data-vbeln = wa_so-ak-vbeln.
     ENDIF.
+    IF NOT ( data-kunnr_ag = wa_so-kunnr_ag AND data-kunnr_we = wa_so-kunnr_we ).
+      rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
+      fillmsg 'E' rtmsg.
+    ENDIF.
+    SELECT
+      COUNT(*)
+      FROM vbkd
+      WHERE bstkd = @data-bstkd
+      AND substring( vbeln,1,5 ) = '00400'
+      AND vbeln NE @data-vbeln
+      .
+    IF sy-subrc EQ 0.
+      rtmsg = |外部合同号{ data-bstkd }已存在|.
+      fillmsg 'E' rtmsg.
+    ENDIF.
     IF data-province IS INITIAL.
       data-province = wa_check-head-province.
     ENDIF.
@@ -256,6 +283,16 @@ FUNCTION zfm_crm_so.
     ENDIF.
     IF data-county IS INITIAL.
       data-county = wa_check-head-county.
+    ENDIF.
+  ELSE.
+    SELECT
+      COUNT(*)
+      FROM vbkd
+      WHERE bstkd = @data-bstkd
+      .
+    IF sy-subrc EQ 0.
+      rtmsg = |外部合同号{ data-bstkd }已存在|.
+      fillmsg 'E' rtmsg.
     ENDIF.
   ENDIF.
 
@@ -271,7 +308,7 @@ FUNCTION zfm_crm_so.
           READ TABLE wa_check-item ASSIGNING FIELD-SYMBOL(<wa_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
           IF sy-subrc EQ 0.
             <lt_item>-posnr = |{ <wa_check>-posnr ALPHA = IN }|.
-            <lt_item>-matnr = <wa_check>-matnr.
+*            <lt_item>-matnr = <wa_check>-matnr.
             IF NOT ( <lt_item>-action = 'U' OR <lt_item>-action = 'D' ).
               rtmsg = |明细ID[{ <lt_item>-new_contractdetailid }]已存在，只能做修改或删除操作|.
               fillmsg 'E' rtmsg.
@@ -287,15 +324,15 @@ FUNCTION zfm_crm_so.
             rtmsg = |单ID[{ data-new_contractid }]未存在，只能做创建操作|.
             fillmsg 'E' rtmsg.
           ENDIF.
-          SELECT
-            COUNT(*)
-            FROM vbkd
-            WHERE bstkd = @data-bstkd
-            .
-          IF sy-subrc = 0.
-            rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
-            fillmsg 'E' rtmsg.
-          ENDIF.
+*          SELECT
+*            COUNT(*)
+*            FROM vbkd
+*            WHERE bstkd = @data-bstkd
+*            .
+*          IF sy-subrc = 0.
+*            rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
+*            fillmsg 'E' rtmsg.
+*          ENDIF.
         ENDIF.
         LOOP AT lt_ttxit ASSIGNING FIELD-SYMBOL(<lt_ttxit>) WHERE tdobject = 'VBBP'.
           ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <lt_item> TO FIELD-SYMBOL(<zlongtext>).
@@ -336,25 +373,25 @@ FUNCTION zfm_crm_so.
 
       RETURN.
     WHEN 'I'.
-      SELECT
-        COUNT(*)
-        FROM vbkd
-        WHERE bstkd = @data-bstkd
-        .
-      IF sy-subrc = 0.
-        rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
-        fillmsg 'E' rtmsg.
-      ENDIF.
-      SELECT
-        COUNT( DISTINCT vbeln ) AS countvn
-        FROM vbak
-        WHERE new_contractid = @data-new_contractid
-        INTO @DATA(countvn)
-      .
-      IF countvn NE 0.
-        rtmsg = |CRM合同ID[{ data-new_contractid }]存在于[{ countvn }]个合同！！！|.
-        fillmsg 'E' rtmsg.
-      ENDIF.
+*      SELECT
+*        COUNT(*)
+*        FROM vbkd
+*        WHERE bstkd = @data-bstkd
+*        .
+*      IF sy-subrc = 0.
+*        rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
+*        fillmsg 'E' rtmsg.
+*      ENDIF.
+*      SELECT
+*        COUNT( DISTINCT vbeln ) AS countvn
+*        FROM vbak
+*        WHERE new_contractid = @data-new_contractid
+*        INTO @DATA(countvn)
+*      .
+*      IF countvn NE 0.
+*        rtmsg = |CRM合同ID[{ data-new_contractid }]存在于[{ countvn }]个合同！！！|.
+*        fillmsg 'E' rtmsg.
+*      ENDIF.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
@@ -397,12 +434,12 @@ FUNCTION zfm_crm_so.
       MOVE-CORRESPONDING data TO wa_extk.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
-      extensionin+30(960) = wa_extk.
+      extensionin+30 = wa_extk.
       APPEND extensionin.
       CLEAR:extensionin.
       PERFORM setbapix USING wa_extk CHANGING wa_extkx.
       extensionin-structure = 'BAPE_VBAKX'.
-      extensionin+30(960) = wa_extkx.
+      extensionin+30 = wa_extkx.
       APPEND extensionin.
 **********************************
       "合作伙伴
@@ -440,15 +477,19 @@ FUNCTION zfm_crm_so.
 **********************************
       "行项目
       posnr = 0 .
+      LOOP AT data-items TRANSPORTING NO FIELDS WHERE posnr = ''.
+        EXIT.
+      ENDLOOP.
+      IF sy-subrc EQ 0.
+        DATA(posnrx) = 'X'.
+      ENDIF.
       LOOP AT data-items ASSIGNING <item> .
         CLEAR:sales_items_in,sales_items_inx,sales_schedules_in,sales_schedules_inx .
-        IF <item>-posnr IS NOT INITIAL.
-          posnr = <item>-posnr.
-        ELSE.
+        IF posnrx = 'X'.
           ADD 10 TO posnr.
+          <item>-posnr = posnr.
         ENDIF.
-        <item>-posnr = posnr.
-        sales_items_in-itm_number     = posnr.
+        sales_items_in-itm_number     = <item>-posnr.
         sales_items_in-material       = <item>-matnr.
         PERFORM addzero(zpubform) CHANGING sales_items_in-material.
         sales_items_in-target_qty     = <item>-kwmeng.
@@ -461,7 +502,7 @@ FUNCTION zfm_crm_so.
         PERFORM setbapix USING sales_items_in CHANGING sales_items_inx.
         APPEND:sales_items_in,sales_items_inx.
         "计划行
-        sales_schedules_in-itm_number = posnr .
+        sales_schedules_in-itm_number = <item>-posnr.
         sales_schedules_in-sched_line = '0001'.
         sales_schedules_in-req_qty    = <item>-kwmeng.
         sales_schedules_in-req_date   = <item>-edatu .
@@ -471,7 +512,7 @@ FUNCTION zfm_crm_so.
 *增强字段
         CLEAR:extensionin,wa_extp.
         MOVE-CORRESPONDING <item> TO wa_extp.
-        PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
+        PERFORM CONCATENATEzqdhtgg USING <item> data-spart CHANGING wa_extp.
         extensionin-structure = 'BAPE_VBAP'.
         extensionin+30 = wa_extp.
         APPEND extensionin.
@@ -495,7 +536,7 @@ FUNCTION zfm_crm_so.
                 itf_text    = lines.
             LOOP AT lines.
               CLEAR:order_text.
-              order_text-itm_number = posnr.
+              order_text-itm_number = <item>-posnr.
               order_text-text_id    = <lt_ttxit>-tdid.
               order_text-langu      = sy-langu .
               order_text-format_col = '*' .
@@ -507,7 +548,7 @@ FUNCTION zfm_crm_so.
         ENDLOOP.
         IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
           CLEAR:sales_conditions_in,sales_conditions_inx.
-          sales_conditions_in-itm_number = posnr.
+          sales_conditions_in-itm_number = <item>-posnr.
           sales_conditions_in-cond_type  = 'ZPR0'.
           sales_conditions_in-cond_value = <item>-kbetr.
 *          sales_conditions_in-cond_p_unt = 1.
@@ -561,50 +602,62 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ENDIF.
     WHEN 'U'.
-      CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,
-      order_header,order_headerx,order_text,conditions_in,conditions_inx,subrc.
+      CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,updateflag,
+      order_header,order_headerx,order_text,conditions_in,conditions_inx,subrc,sales_partners,sales_partnersc.
       REFRESH:
       order_item_in,order_item_inx,schedule_lines,schedule_linesx,
-      order_text,conditions_in,conditions_inx.
+      order_text,conditions_in,conditions_inx,sales_partners,sales_partnersc.
       "补0
       PERFORM addzero(zpubform) CHANGING data-vbeln.
       SELECT
-        vbak~vbeln
-        vbap~posnr
-        vbap~matnr
-        vbap~werks
+        vbak~vbeln,
+        vbap~posnr,
+        vbap~matnr,
+        vbap~werks,
         vbap~pstyv
-        vbkd~bstkd
-        INTO CORRESPONDING FIELDS OF TABLE it_vbap
         FROM vbak
         JOIN vbap ON vbak~vbeln = vbap~vbeln
-        JOIN vbkd ON vbak~vbeln = vbkd~vbeln AND vbkd~posnr = '000000'
-        WHERE vbkd~bstkd = data-bstkd
-        AND vbak~vbeln = data-vbeln
+        WHERE vbak~vbeln = @data-vbeln
         AND vbak~vbtyp = 'G' "合同
+        ORDER BY vbak~vbeln,vbap~posnr
+        INTO CORRESPONDING FIELDS OF TABLE @it_vbap
         .
       IF sy-subrc NE 0.
-        fillmsg 'E' '只允许创建或修改一个合同！' .
+        rtmsg = |合同{ data-vbeln }不存在|.
+        fillmsg 'E' rtmsg.
       ENDIF.
-      READ TABLE it_vbap INDEX 1.
+*      SELECT
+*        COUNT(*)
+*        FROM vbkd
+*        WHERE bstkd = @data-bstkd
+*        AND substring( vbeln,1,5 ) = '00400'
+*        AND vbeln NE @data-vbeln
+*        .
+*      IF sy-subrc EQ 0.
+*        rtmsg = |外部合同号{ data-bstkd }已存在|.
+*        fillmsg 'E' rtmsg.
+*      ENDIF.
       "抬头
       salesdocument = data-vbeln.
 
-      order_header-sales_org  = data-vkorg ."销售组织
-      order_header-purch_no_c = data-bstkd ."外部合同号
-      order_header-division   = data-spart ."产品组
-      order_header-sales_grp  = data-vkgrp ."销售组
-      order_header-distr_chan = data-vtweg ."分销渠道
-      order_header-sales_off  = data-vkbur ."销售办事处
-      order_header-currency   = data-waerk.
-      order_header-doc_date   = data-prsdt."凭证日期 (接收/发送日期)
-      order_header-incoterms1 = data-inco1."*  国际贸易条款（第 1 部分）
-      order_header-incoterms2 = data-inco2_l."*  国际贸易条款（第 2 部分）
-      order_header-price_date = data-prsdt.
-      order_header-ct_valid_f = data-guebg.
-      order_header-ct_valid_t = data-gueen.
-      order_header-cust_group = data-kdgrp.
-      PERFORM setbapix USING order_header CHANGING order_headerx.
+      setbapix 'order_header' 'sales_org ' data-vkorg  .
+      setbapix 'order_header' 'purch_no_c' data-bstkd  .
+      setbapix 'order_header' 'division  ' data-spart  .
+      setbapix 'order_header' 'sales_grp ' data-vkgrp  .
+      setbapix 'order_header' 'distr_chan' data-vtweg  .
+      setbapix 'order_header' 'sales_off ' data-vkbur  .
+      setbapix 'order_header' 'currency  ' data-waerk  .
+      setbapix 'order_header' 'doc_date  ' data-prsdt  .
+      IF data-inco1 IS NOT INITIAL.
+        setbapix 'order_header' 'incoterms1' data-inco1  .
+      ENDIF.
+      IF data-inco2_l IS NOT INITIAL.
+        setbapix 'order_header' 'incoterms2' data-inco2_l.
+      ENDIF.
+      setbapix 'order_header' 'price_date' data-prsdt  .
+      setbapix 'order_header' 'ct_valid_f' data-guebg  .
+      setbapix 'order_header' 'ct_valid_t' data-gueen  .
+      setbapix 'order_header' 'cust_group' data-kdgrp  .
       order_headerx-updateflag = 'U'.
 
 *增强字段
@@ -612,12 +665,23 @@ FUNCTION zfm_crm_so.
       MOVE-CORRESPONDING data TO wa_extk.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
-      extensionin+30(960) = wa_extk.
+      extensionin+30 = wa_extk.
       APPEND extensionin.
       CLEAR:extensionin.
-      PERFORM setbapix USING wa_extk CHANGING wa_extkx.
       extensionin-structure = 'BAPE_VBAKX'.
-      extensionin+30(960) = wa_extkx.
+      DATA(componentsVBAKX) = CAST cl_abap_structdescr( cl_abap_structdescr=>describe_by_name( 'BAPE_VBAK' ) )->get_components( ).
+      LOOP AT componentsVBAKX INTO DATA(wa_componentsVBAKX) WHERE as_include = 'X'.
+        DATA(components) = CAST cl_abap_structdescr( wa_componentsVBAKX-type )->components.
+        LOOP AT components ASSIGNING FIELD-SYMBOL(<components>).
+          DATA(key) = |WA_EXTKX-{ <components>-name }|.
+          ASSIGN (key) TO FIELD-SYMBOL(<valuek>).
+          IF sy-subrc EQ 0.
+            <valuek> = 'X'.
+          ENDIF.
+        ENDLOOP.
+      ENDLOOP.
+      wa_extkx-vbeln = data-vbeln.
+      extensionin+30 = wa_extkx.
       APPEND extensionin.
 
       LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
@@ -633,6 +697,7 @@ FUNCTION zfm_crm_so.
               itf_text    = lines.
           LOOP AT lines.
             CLEAR:order_text.
+            order_text-doc_number = data-vbeln.
             order_text-text_id    = <lt_ttxit>-tdid.
             order_text-langu      = sy-langu.
             order_text-format_col = '*' .
@@ -643,12 +708,31 @@ FUNCTION zfm_crm_so.
         ENDIF.
       ENDLOOP.
 **********************************
-*      "合作伙伴
-*      SALES_PARTNERS-PARTN_ROLE = 'AG'.
-*      SALES_PARTNERS-PARTN_NUMB = data-KUNNR.
-*      PERFORM ADDZERO(ZPUBFORM) CHANGING SALES_PARTNERS-PARTN_NUMB.
-*      APPEND SALES_PARTNERS.
-*      CLEAR SALES_PARTNERS.
+      "合作伙伴
+***      CLEAR:sales_partners,sales_partnersc.
+***      sales_partners-partn_role = 'AG'.
+***      sales_partners-partn_numb = data-kunnr_ag.
+***
+***      sales_partnersc-document      = data-vbeln.
+****      sales_partnersc-itm_number    = '000000'.
+***      sales_partnersc-updateflag    = 'U'.
+***      sales_partnersc-partn_role    = 'AG'.
+****      sales_partnersc-p_numb_old    =  ''.
+***      SELECT SINGLE kunnr,posnr FROM vbpa WHERE vbeln = @data-vbeln AND posnr = '000000' AND parvw = 'AG' INTO ( @sales_partnersc-p_numb_old,@sales_partnersc-itm_number ).
+***      sales_partnersc-p_numb_new    =  data-kunnr_ag.
+***      APPEND:sales_partners,sales_partnersc.
+***      CLEAR:sales_partners,sales_partnersc.
+***      sales_partners-partn_role = 'WE'.
+***      sales_partners-partn_numb = data-kunnr_we.
+***
+***      sales_partnersc-document      = data-vbeln.
+****      sales_partnersc-itm_number    =  '000000'.
+***      sales_partnersc-updateflag    =  'U'.
+***      sales_partnersc-partn_role    =  'WE'.
+****      sales_partnersc-p_numb_old    =  ''.
+***      SELECT SINGLE kunnr,posnr FROM vbpa WHERE vbeln = @data-vbeln AND posnr = '000000' AND parvw = 'WE' INTO ( @sales_partnersc-p_numb_old,@sales_partnersc-itm_number ).
+***      sales_partnersc-p_numb_new    =  data-kunnr_we.
+***      APPEND:sales_partners,sales_partnersc.
 **********************************
       "行项目
       "新增行取最大行项目
@@ -657,77 +741,20 @@ FUNCTION zfm_crm_so.
         FROM vbap
         WHERE vbeln = data-vbeln
         .
-
-      SORT it_vbap BY bstkd posnr.
+      SELECT SINGLE
+        vbak~*
+        INTO @DATA(vbak)
+        FROM vbak
+        WHERE vbak~vbeln = @data-vbeln.
       LOOP AT data-items ASSIGNING <item> .
         CLEAR:order_item_in, order_item_inx, schedule_lines,schedule_linesx,wa_extp,wa_extpx.
-        READ TABLE it_vbap WITH KEY bstkd = data-bstkd posnr = <item>-posnr BINARY SEARCH.
+        READ TABLE it_vbap WITH KEY vbeln = data-vbeln posnr = <item>-posnr BINARY SEARCH.
         IF sy-subrc = 0 .
+          updateflag = 'U'.
           tabix = sy-tabix.
           "更新未被删除标志
           it_vbap-znodel = 'X'.
           MODIFY it_vbap INDEX tabix TRANSPORTING znodel.
-          order_item_in-itm_number  = it_vbap-posnr.
-          order_item_in-material    = <item>-matnr.
-          order_item_in-target_qty  = <item>-kwmeng.
-          order_item_in-target_qu   = <item>-vrkme.
-          order_item_in-sales_unit  = <item>-vrkme.
-          order_item_in-plant       = <item>-werks.
-          order_item_in-currency    = data-waerk.
-          PERFORM setbapix USING order_item_in CHANGING order_item_inx.
-          order_item_inx-updateflag = 'U'.
-          APPEND:order_item_in,order_item_inx.
-          "计划行
-          schedule_lines-itm_number = it_vbap-posnr.
-          schedule_lines-sched_line = '0001'.
-          schedule_lines-req_qty    = <item>-kwmeng.
-          schedule_lines-req_date   = <item>-edatu .
-          PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
-          schedule_linesx-updateflag = 'U'.
-          APPEND:schedule_lines,schedule_linesx.
-*文本
-          LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
-            ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
-            IF sy-subrc EQ 0.
-              "切割文本
-              CLEAR:text_stream,text_stream[],lines[],lines.
-              text_stream-text = <zlongtext>.
-              APPEND text_stream.
-              CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-                TABLES
-                  text_stream = text_stream
-                  itf_text    = lines.
-              LOOP AT lines.
-                CLEAR:order_text.
-                order_text-itm_number = posnr.
-                order_text-text_id    = <lt_ttxit>-tdid.
-                order_text-langu      = sy-langu .
-                order_text-format_col = '*' .
-                order_text-text_line  = lines-tdline.
-                APPEND order_text.
-              ENDLOOP.
-              UNASSIGN <zlongtext>.
-            ENDIF.
-          ENDLOOP.
-*增强字段
-          CLEAR:extensionin,wa_extp.
-          MOVE-CORRESPONDING <item> TO wa_extp.
-          PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
-          extensionin-structure = 'BAPE_VBAP'.
-          extensionin+30 = wa_extp.
-          APPEND extensionin.
-          CLEAR:extensionin,wa_extpx .
-          PERFORM setbapix USING wa_extp CHANGING wa_extpx.
-          extensionin-structure = 'BAPE_VBAPX'.
-          extensionin+30 = wa_extpx.
-          APPEND extensionin.
-
-          SELECT SINGLE
-            vbak~*
-            INTO @DATA(vbak)
-            FROM vbak
-            WHERE vbak~vbeln = @data-vbeln.
-
           CLEAR:conditions_in,conditions_inx.
           IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
             PERFORM fillcond USING it_vbap-posnr 'ZPR0'  <item>-kbetr vbak
@@ -735,83 +762,92 @@ FUNCTION zfm_crm_so.
             APPEND:conditions_in,conditions_inx.
           ENDIF.
         ELSE.
-          IF <item>-posnr IS NOT INITIAL.
-            posnr = <item>-posnr.
-          ELSE.
+          updateflag = 'I'.
+          IF <item>-posnr IS INITIAL.
             ADD 10 TO posnr.
+            <item>-posnr = posnr.
           ENDIF.
-          <item>-posnr = posnr.
-          CLEAR:order_item_in, order_item_inx, schedule_lines,schedule_linesx,wa_extp,wa_extpx.
-          order_item_in-itm_number  = <item>-posnr.
-          order_item_in-material    = <item>-matnr.
-          order_item_in-target_qty  = <item>-kwmeng.
-          order_item_in-target_qu   = <item>-vrkme.
-          order_item_in-sales_unit  = <item>-vrkme.
-          order_item_in-plant       = <item>-werks.
-          order_item_in-currency    = data-waerk.
-          PERFORM setbapix USING order_item_in CHANGING order_item_inx.
-          order_item_inx-updateflag  = 'I'.
-          APPEND:order_item_in,order_item_inx.
-
-          schedule_lines-itm_number = <item>-posnr.
-          schedule_lines-sched_line = '0001'.
-          schedule_lines-req_qty    = <item>-kwmeng.
-          schedule_lines-req_date   = <item>-edatu .
-          PERFORM setbapix USING order_item_in CHANGING order_item_inx.
-          PERFORM setbapix USING schedule_lines CHANGING schedule_linesx.
-          schedule_linesx-updateflag = 'I'.
-          APPEND:schedule_lines,schedule_linesx.
-
-*文本
-          LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
-            ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
-            IF sy-subrc EQ 0.
-              "切割文本
-              CLEAR:text_stream,text_stream[],lines[],lines.
-              text_stream-text = <zlongtext>.
-              APPEND text_stream.
-              CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-                TABLES
-                  text_stream = text_stream
-                  itf_text    = lines.
-              LOOP AT lines.
-                CLEAR:order_text.
-                order_text-itm_number = posnr.
-                order_text-text_id    = <lt_ttxit>-tdid.
-                order_text-langu      = sy-langu .
-                order_text-format_col = '*' .
-                order_text-text_line  = lines-tdline.
-                APPEND order_text.
-              ENDLOOP.
-              UNASSIGN <zlongtext>.
-            ENDIF.
-          ENDLOOP.
-*增强字段
-          CLEAR:extensionin,wa_extp.
-          MOVE-CORRESPONDING <item> TO wa_extp.
-          PERFORM CONCATENATEzqdhtgg USING <item> CHANGING wa_extp-zqdhtgg.
-          extensionin-structure = 'BAPE_VBAP'.
-          extensionin+30 = wa_extp.
-          APPEND extensionin.
-          CLEAR:extensionin,wa_extpx .
-          PERFORM setbapix USING wa_extp CHANGING wa_extpx.
-          extensionin-structure = 'BAPE_VBAPX'.
-          extensionin+30 = wa_extpx.
-          APPEND extensionin.
 
           "价格
           IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
             CLEAR:conditions_in,conditions_inx.
-            conditions_in-itm_number = <item>-posnr.
-            conditions_in-cond_type  = 'ZPR0'.
-            conditions_in-cond_value =  <item>-kbetr .
-*          conditions_in-cond_p_unt = 1.
-            conditions_in-currency   = data-waerk.
-            PERFORM setbapix USING conditions_in CHANGING conditions_inx.
-            conditions_inx-updateflag = 'I'.
+            setbapix 'conditions_in' 'itm_number' <item>-posnr.
+            setbapix 'conditions_in' 'cond_type ' 'ZPR0'.
+            setbapix 'conditions_in' 'cond_value'  <item>-kbetr .
+            setbapix 'conditions_in' 'currency  ' data-waerk.
+            conditions_inx-itm_number = <item>-posnr.
+            conditions_inx-updateflag = updateflag.
             APPEND:conditions_in,conditions_inx.
           ENDIF.
         ENDIF.
+        setbapix 'order_item_in' 'itm_number' <item>-posnr.
+        setbapix 'order_item_in' 'material  ' <item>-matnr.
+        setbapix 'order_item_in' 'target_qty' <item>-kwmeng.
+        setbapix 'order_item_in' 'target_qu ' <item>-vrkme.
+        setbapix 'order_item_in' 'sales_unit' <item>-vrkme.
+        setbapix 'order_item_in' 'plant     ' <item>-werks.
+        setbapix 'order_item_in' 'currency  ' data-waerk.
+        order_item_inx-itm_number = <item>-posnr.
+        order_item_inx-updateflag = updateflag.
+        APPEND:order_item_in,order_item_inx.
+        "计划行
+        setbapix 'schedule_lines' 'itm_number' <item>-posnr.
+        setbapix 'schedule_lines' 'sched_line' '0001'.
+        setbapix 'schedule_lines' 'req_qty   ' <item>-kwmeng.
+        setbapix 'schedule_lines' 'req_date  ' <item>-edatu .
+        schedule_linesx-itm_number = <item>-posnr.
+        schedule_linesx-sched_line = '0001'.
+        schedule_linesx-updateflag = updateflag.
+        APPEND:schedule_lines,schedule_linesx.
+*文本
+        LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
+          ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
+          IF sy-subrc EQ 0.
+            "切割文本
+            CLEAR:text_stream,text_stream[],lines[],lines.
+            text_stream-text = <zlongtext>.
+            APPEND text_stream.
+            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+              TABLES
+                text_stream = text_stream
+                itf_text    = lines.
+            LOOP AT lines.
+              CLEAR:order_text.
+              order_text-doc_number = data-vbeln.
+              order_text-itm_number = <item>-posnr.
+              order_text-text_id    = <lt_ttxit>-tdid.
+              order_text-langu      = sy-langu .
+              order_text-format_col = '*' .
+              order_text-text_line  = lines-tdline.
+              APPEND order_text.
+            ENDLOOP.
+            UNASSIGN <zlongtext>.
+          ENDIF.
+        ENDLOOP.
+*增强字段
+        CLEAR:extensionin,wa_extp.
+        MOVE-CORRESPONDING <item> TO wa_extp.
+        PERFORM CONCATENATEzqdhtgg USING <item> data-spart CHANGING wa_extp.
+        extensionin-structure = 'BAPE_VBAP'.
+        extensionin+30 = wa_extp.
+        APPEND extensionin.
+        CLEAR:extensionin,wa_extpx .
+        extensionin-structure = 'BAPE_VBAPX'.
+        DATA(componentsVBAPX) = CAST cl_abap_structdescr( cl_abap_structdescr=>describe_by_name( 'BAPE_VBAP' ) )->get_components( ).
+        LOOP AT componentsVBAPX INTO DATA(wa_componentsVBAPX) WHERE as_include = 'X'.
+          components = CAST cl_abap_structdescr( wa_componentsVBAPX-type )->components.
+          LOOP AT components ASSIGNING <components>.
+            key = |WA_EXTPX-{ <components>-name }|.
+            ASSIGN (key) TO FIELD-SYMBOL(<valuep>).
+            IF sy-subrc EQ 0.
+              <valuep> = 'X'.
+            ENDIF.
+          ENDLOOP.
+        ENDLOOP.
+        wa_extpx-vbeln = data-vbeln.
+        wa_extpx-posnr = <item>-posnr.
+        extensionin+30 = wa_extpx.
+        APPEND extensionin.
       ENDLOOP.
 
       LOOP AT it_vbap WHERE znodel = ''.
@@ -831,6 +867,8 @@ FUNCTION zfm_crm_so.
           return           = return
           order_item_in    = order_item_in
           order_item_inx   = order_item_inx
+*         partners         = sales_partners
+*         partnerchanges   = sales_partnersc
           schedule_lines   = schedule_lines
           schedule_linesx  = schedule_linesx
           order_text       = order_text

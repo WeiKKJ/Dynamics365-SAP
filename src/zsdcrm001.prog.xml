@@ -2454,6 +2454,12 @@
       <FUN_TEXT>返回</FUN_TEXT>
      </RSMPE_FUNT>
      <RSMPE_FUNT>
+      <CODE>BC</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>保存</FUN_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
       <CODE>CANCEL</CODE>
       <TEXTNO>001</TEXTNO>
       <TEXT_TYPE>S</TEXT_TYPE>
@@ -2529,6 +2535,14 @@
       <FUN_TEXT>处理合同</FUN_TEXT>
       <ICON_TEXT>处理合同</ICON_TEXT>
       <INFO_TEXT>处理合同</INFO_TEXT>
+     </RSMPE_FUNT>
+     <RSMPE_FUNT>
+      <CODE>ZC</CODE>
+      <TEXTNO>001</TEXTNO>
+      <TEXT_TYPE>S</TEXT_TYPE>
+      <FUN_TEXT>暂存</FUN_TEXT>
+      <ICON_TEXT>暂存</ICON_TEXT>
+      <INFO_TEXT>暂存</INFO_TEXT>
      </RSMPE_FUNT>
     </FUN>
     <MEN>
@@ -3164,6 +3178,12 @@
       <NO>01</NO>
       <PFNO>21</PFNO>
      </RSMPE_BUT>
+     <RSMPE_BUT>
+      <PFK_CODE>000002</PFK_CODE>
+      <CODE>0001</CODE>
+      <NO>02</NO>
+      <PFNO>18</PFNO>
+     </RSMPE_BUT>
     </BUT>
     <PFK>
      <RSMPE_PFK>
@@ -3408,6 +3428,12 @@
      </RSMPE_PFK>
      <RSMPE_PFK>
       <CODE>000002</CODE>
+      <PFNO>18</PFNO>
+      <FUNCODE>ZC</FUNCODE>
+      <FUNNO>001</FUNNO>
+     </RSMPE_PFK>
+     <RSMPE_PFK>
+      <CODE>000002</CODE>
       <PFNO>21</PFNO>
       <FUNCODE>SO</FUNCODE>
       <FUNNO>001</FUNNO>
@@ -3507,6 +3533,10 @@
      <RSMPE_STAF>
       <STATUS>STA900</STATUS>
       <FUNCTION>SO</FUNCTION>
+     </RSMPE_STAF>
+     <RSMPE_STAF>
+      <STATUS>STA900</STATUS>
+      <FUNCTION>ZC</FUNCTION>
      </RSMPE_STAF>
      <RSMPE_STAF>
       <STATUS>STD_FULL</STATUS>
@@ -4050,6 +4080,12 @@
      <ENTRY>.</ENTRY>
      <LENGTH>12</LENGTH>
      <SPLIT>D</SPLIT>
+    </item>
+    <item>
+     <ID>S</ID>
+     <KEY>S_BSTKD</KEY>
+     <ENTRY>外部合同号</ENTRY>
+     <LENGTH>13</LENGTH>
     </item>
     <item>
      <ID>S</ID>

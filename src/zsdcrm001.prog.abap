@@ -4,7 +4,7 @@
 *&
 *&---------------------------------------------------------------------*
 REPORT zsdcrm001.
-TABLES:tvgrt.
+TABLES:tvgrt,vbkd.
 INCLUDE zsdcrm001_top.
 INCLUDE zlongtext.
 INCLUDE zsdcrm001_define.
@@ -15,7 +15,8 @@ INCLUDE zsdcrm001_class.
 SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE btxt1.
   PARAMETERS p_vkorg TYPE tvko-vkorg DEFAULT '2000' OBLIGATORY.
   SELECT-OPTIONS:s_spart FOR gs_out-spart,
-                 s_vkgrp FOR tvgrt-vkgrp.
+                 s_vkgrp FOR tvgrt-vkgrp,
+                 s_bstkd FOR vbkd-bstkd.
   PARAMETERS p_s AS CHECKBOX TYPE char1 DEFAULT 'X' USER-COMMAND ss1.
 SELECTION-SCREEN END OF BLOCK b1.
 
@@ -74,6 +75,7 @@ FORM getdata.
       WHERE z~vkorg = @p_vkorg
       AND z~spart IN @s_spart
       AND z~vkgrp IN @s_vkgrp
+      AND z~bstkd IN @s_bstkd
       AND EXISTS ( SELECT * FROM ztcrm_so_item WHERE new_contractid = z~new_contractid AND action NE '' )
       ORDER BY z~new_contractid
       INTO CORRESPONDING FIELDS OF TABLE @gt_out.
@@ -88,6 +90,7 @@ FORM getdata.
       WHERE z~vkorg = @p_vkorg
       AND z~spart IN @s_spart
       AND z~vkgrp IN @s_vkgrp
+      AND z~bstkd IN @s_bstkd
       ORDER BY z~new_contractid
       INTO CORRESPONDING FIELDS OF TABLE @gt_out.
   ENDIF.
@@ -412,11 +415,10 @@ FORM getitems .
   READ TABLE gt_out INTO gs_out INDEX <row>-row_id.
   CLEAR:gt_item.
   SELECT
-    *
-    FROM ztcrm_so_item
-    WHERE new_contractid = @gs_out-new_contractid
-*    AND action NE ''
-    ORDER BY new_contractdetailid
+    z~*
+    FROM ztcrm_so_item AS z
+    WHERE z~new_contractid = @gs_out-new_contractid
+    ORDER BY z~new_contractdetailid
     INTO CORRESPONDING FIELDS OF TABLE @gt_item
     .
   IF gt_item IS INITIAL.
@@ -452,7 +454,6 @@ FORM getitems .
     EXIT.
   ENDIF.
 
-
   SELECT
     ttxit~*
     FROM tvak
@@ -473,65 +474,14 @@ FORM getitems .
     gs_longtext_im-sapno = gs_out-new_contractid.
     APPEND gs_longtext_im TO gt_longtext_im.
   ENDLOOP.
-  SELECT
-    mara~*,
-    makt~maktx
-    FROM mara
-    LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
-    FOR ALL ENTRIES IN @gt_item
-    WHERE mara~chandi = @gt_item-chandi
-    AND mara~caizhi = @gt_item-caizhi
-    AND mara~width = @gt_item-width
-    AND mara~houdu = @gt_item-houdu
-    AND mara~yl2 = @gt_item-yl2
-    AND mara~yl3 = @gt_item-yl3
-    AND mara~yl4 = @gt_item-yl4
-    AND mara~hcl = @gt_item-hcl
-    AND mara~groes = @gt_item-groes
-    INTO TABLE @DATA(lt_mara)
-    .
-  SELECT
-    mara~matnr,
-    makt~maktx
-    FROM mara
-    LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
-    FOR ALL ENTRIES IN @gt_item
-    WHERE mara~matnr = @gt_item-matnr
-    INTO TABLE @DATA(lt_makt)
-    .
-*  SORT lt_mara BY matnr.
+
   SELECT MAX( posnr ) FROM vbap WHERE vbeln = @gs_out-vbeln INTO @posnr.
   LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<gt_item>).
-    CLEAR <gt_item>-field_style.
-    CLEAR stylelin.
-    stylelin-fieldname = 'MATNR'.
-    IF <gt_item>-action = ''.
-      stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
-    ELSE.
-      stylelin-style = cl_gui_alv_grid=>mc_style_enabled.
-    ENDIF.
-    INSERT stylelin INTO TABLE <gt_item>-field_style.
     IF <gt_item>-posnr IS INITIAL.
       ADD 10 TO posnr.
-    ELSE.
-      posnr = <gt_item>-posnr.
+      <gt_item>-posnr = posnr.
     ENDIF.
-
-    <gt_item>-posnr = posnr.
-    IF <gt_item>-matnr IS NOT INITIAL.
-      READ TABLE lt_makt ASSIGNING FIELD-SYMBOL(<lt_makt>) WITH KEY matnr = <gt_item>-matnr.
-      IF sy-subrc EQ 0.
-        <gt_item>-maktx = <lt_makt>-maktx.
-      ENDIF.
-    ELSE.
-      READ TABLE lt_mara ASSIGNING FIELD-SYMBOL(<lt_mara>) WITH KEY mara-chandi = <gt_item>-chandi
-      mara-caizhi = <gt_item>-caizhi mara-width = <gt_item>-width mara-houdu = <gt_item>-houdu mara-yl2 = <gt_item>-yl2
-      mara-yl3 = <gt_item>-yl3 mara-yl4 = <gt_item>-yl4 mara-hcl = <gt_item>-hcl mara-groes = <gt_item>-groes.
-      IF sy-subrc EQ 0.
-        <gt_item>-matnr = <lt_mara>-mara-matnr.
-        <gt_item>-maktx = <lt_mara>-maktx.
-      ENDIF.
-    ENDIF.
+    PERFORM set_style USING <gt_item>-matnr CHANGING <gt_item>.
     LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
       gs_longtext_im-sapmk = 'SD'.
       gs_longtext_im-tdid  = <lt_ttxit>-tdid.
@@ -663,6 +613,11 @@ FORM fillfldct .
             'MATNR ' 'ZTCRM_SO_ITEM' 'MATNR ' '物料编码 '   ,
             'MAKTX ' 'MAKT' 'MAKTX ' '物料描述   '    .
   ENDCASE.
+  PERFORM catset TABLES gt_fldct_item USING:
+        'BMTHOUDU ' 'ZTCRM_SO_ITEM' 'BMTHOUDU' 'BMT厚度'  ,
+        'TCTHOOUDU ' 'ZTCRM_SO_ITEM' 'TCTHOOUDU' 'TCT厚度'  ,
+        'TCTPHOUDU ' 'ZTCRM_SO_ITEM' 'TCTPHOUDU' 'TCTP厚度'  ,
+        'HOUDULX ' 'ZTCRM_SO_ITEM' 'HOUDULX' '厚度类型'  .
   LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>).
     CASE <fldct>-fieldname.
       WHEN 'MATNR'.
@@ -671,4 +626,119 @@ FORM fillfldct .
     ENDCASE.
   ENDLOOP.
 
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form set_style
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*&      <-- <GT_ITEM>
+*&---------------------------------------------------------------------*
+FORM set_style USING VALUE(p_matnr) CHANGING p_item LIKE gs_item.
+  CLEAR:p_item-field_style,p_item-cellcolor.
+  CLEAR stylelin.
+  stylelin-fieldname = 'MATNR'.
+  IF p_item-action = ''.
+    stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
+    SELECT SINGLE
+      vbap~matnr,
+      makt~maktx
+      FROM vbak
+      JOIN vbap ON vbak~vbeln = vbap~vbeln
+      JOIN makt ON vbap~matnr = makt~matnr AND makt~spras = @sy-langu
+      WHERE vbap~new_contractdetailid = @p_item-new_contractdetailid
+      AND vbak~new_contractid = @gs_out-new_contractid
+      INTO ( @p_item-matnr,@p_item-maktx )
+      .
+    IF sy-subrc NE 0.
+      INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING FIELD-SYMBOL(<cellcolor>).
+      <cellcolor>-fname = 'MATNR'.
+      <cellcolor>-color-col = 6 .
+      <cellcolor>-color-int = 1 .
+      <cellcolor>-color-inv = 0 .
+      INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+      <cellcolor>-fname = 'MAKTX'.
+      <cellcolor>-color-col = 6 .
+      <cellcolor>-color-int = 1 .
+      <cellcolor>-color-inv = 0 .
+    ENDIF.
+  ELSE."action
+    stylelin-style = cl_gui_alv_grid=>mc_style_enabled.
+    SELECT SINGLE
+      mara~matnr,
+      makt~maktx
+      FROM mara
+      LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+      WHERE mara~chandi = @p_item-chandi
+      AND mara~caizhi = @p_item-caizhi
+      AND mara~width = @p_item-width
+      AND mara~houdu = @p_item-houdu
+      AND mara~yl2 = @p_item-yl2
+      AND mara~yl3 = @p_item-yl3
+      AND mara~yl4 = @p_item-yl4
+      AND mara~hcl = @p_item-hcl
+      AND mara~groes = @p_item-groes
+      INTO ( @DATA(matnr),@DATA(maktx) )
+      .
+    IF p_matnr IS NOT INITIAL.
+      IF p_matnr = matnr.
+        p_item-maktx = maktx.
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MATNR'.
+        <cellcolor>-color-col = 5 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MAKTX'.
+        <cellcolor>-color-col = 5 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+      ELSE.
+        SELECT SINGLE
+          makt~maktx
+          FROM makt
+          WHERE makt~matnr = @p_matnr
+          AND makt~spras = @sy-langu
+          INTO @p_item-maktx
+          .
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MATNR'.
+        <cellcolor>-color-col = 3 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MAKTX'.
+        <cellcolor>-color-col = 3 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+      ENDIF.
+    ELSE.
+      IF matnr IS NOT INITIAL.
+        p_item-matnr = matnr.
+        p_item-maktx = maktx.
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MATNR'.
+        <cellcolor>-color-col = 5 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MAKTX'.
+        <cellcolor>-color-col = 5 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+      ELSE.
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MATNR'.
+        <cellcolor>-color-col = 6 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+        INSERT INITIAL LINE INTO TABLE p_item-cellcolor ASSIGNING <cellcolor>.
+        <cellcolor>-fname = 'MAKTX'.
+        <cellcolor>-color-col = 6 .
+        <cellcolor>-color-int = 1 .
+        <cellcolor>-color-inv = 0 .
+      ENDIF.
+    ENDIF.
+  ENDIF."action
+  INSERT stylelin INTO TABLE p_item-field_style.
 ENDFORM.

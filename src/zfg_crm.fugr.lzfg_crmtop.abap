@@ -68,3 +68,21 @@ TYPES:BEGIN OF ty_header,
         xdata TYPE xstring,
       END OF ty_header.
 DATA:header TYPE TABLE OF ty_header.
+FIELD-SYMBOLS:<setbapikey>  TYPE any,
+              <setbapixkey> TYPE any.
+DATA:setbapi  TYPE char60,
+     setbapix TYPE char60.
+DEFINE setbapix.
+  UNASSIGN:<setbapikey>,<setbapixkey>.
+  CLEAR:setbapi,setbapix.
+  setbapi = to_upper( |{ &1 }-{ &2 }| ).
+  ASSIGN (setbapi) TO <setbapikey>.
+  IF sy-subrc EQ 0.
+    <setbapikey> = &3.
+    setbapix = to_upper( |{ &1 }X-{ &2 }| ).
+    ASSIGN (setbapix) TO <setbapixkey>.
+    IF sy-subrc EQ 0.
+      <setbapixkey> = 'X'.
+    ENDIF.
+  ENDIF.
+END-OF-DEFINITION.

@@ -240,7 +240,15 @@ FORM addunit USING matnr wsmei CHANGING message.
   ENDIF.
 
 ENDFORM.
-
+*&---------------------------------------------------------------------*
+*& Form setbapix
+*&---------------------------------------------------------------------*
+*& 修改时不要用此赋值，会出现字段置空无法更新的问题，用宏setbapix来避免此问题
+*&
+*&---------------------------------------------------------------------*
+*&      --> fs
+*&      <-- fsx
+*&---------------------------------------------------------------------*
 FORM setbapix USING fs CHANGING fsx.
   FIELD-SYMBOLS:<fs>,<fsx>.
   DATA: outfieldcat TYPE slis_t_fieldcat_alv,
@@ -268,6 +276,7 @@ FORM setbapix USING fs CHANGING fsx.
     ENDIF.
   ENDLOOP.
 ENDFORM.
+
 *&---------------------------------------------------------------------*
 *& Form CONCATENATEzqdhtgg
 *&---------------------------------------------------------------------*
@@ -275,14 +284,19 @@ ENDFORM.
 *& 20241121：描述：处理合同时，根据合同的厚度类型拼接合同明细行的签订合同规格字段
 *&---------------------------------------------------------------------*
 *&      --> <ITEM>
-*&      <-- WA_EXTP_ZQDHTGG
+*&      <-- WA_EXTP
 *&---------------------------------------------------------------------*
 FORM CONCATENATEzqdhtgg  USING VALUE(p_item) TYPE zscrm_so_item
-                         CHANGING p_zqdhtgg TYPE bape_vbap-zqdhtgg.
-  DATA(assignhoudulx) = to_upper( CONV string( |p_item-{ p_item-houdulx }houdu| ) ).
+                               VALUE(p_spart) TYPE vbak-spart
+                          CHANGING p_wa_extp TYPE bape_vbap.
+  DATA(assignhoudulx) = to_upper( |p_item-{ p_item-houdulx }houdu| ).
   ASSIGN (assignhoudulx) TO FIELD-SYMBOL(<assignhoudulxv>).
   IF sy-subrc EQ 0.
-    p_zqdhtgg = |{ <assignhoudulxv> }{ p_item-houdulx }*{ p_item-width }|.
+    p_wa_extp-zqdhtgg = |{ <assignhoudulxv> }{ p_item-houdulx }*{ p_item-width }|.
     UNASSIGN <assignhoudulxv>.
+  ENDIF.
+  IF p_spart = '14' OR p_spart = '15'.
+    p_wa_extp-ztdhdgc = p_item-zhdgc.
+    CLEAR p_wa_extp-zhdgc.
   ENDIF.
 ENDFORM.

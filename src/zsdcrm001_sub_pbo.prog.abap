@@ -242,6 +242,7 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 FORM callalv_item .
   gs_slayt_item-stylefname = 'FIELD_STYLE'.
+  gs_slayt_item-ctab_fname = 'CELLCOLOR '.
   gs_slayt_item-box_fname  = 'SEL'.
   gs_slayt_item-zebra      = 'X'.
   PERFORM callalv_oo IN PROGRAM zvariant_compare
@@ -332,7 +333,7 @@ FORM repo_init_simple .
     EXPORTING
       parent                     = o_container_longtext
       wordwrap_mode              = cl_gui_textedit=>wordwrap_at_fixed_position
-      wordwrap_position          = 132
+      wordwrap_position          = 116
       wordwrap_to_linebreak_mode = cl_gui_textedit=>true
     EXCEPTIONS
       OTHERS                     = 1.

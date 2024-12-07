@@ -38,6 +38,8 @@ MODULE user_command_0900 INPUT.
       SELECT SINGLE zname FROM ztsd226 WHERE zid = @gs_out-county INTO @gs_out-county_des.
     WHEN 'SO'.
       PERFORM so.
+    WHEN 'ZC'.
+      PERFORM zc.
   ENDCASE.
 ENDMODULE.
 *&---------------------------------------------------------------------*
@@ -96,6 +98,7 @@ FORM so .
       vbeln  = vbeln
     CHANGING
       data   = data.
+  PERFORM ezsdr IN PROGRAM saplzfg_crm USING 'X' gs_out-new_contractid CHANGING msg.
   PERFORM inmsg(zpubform) TABLES ret2 USING '' rtype '' rtmsg(50) rtmsg+50(50) rtmsg+100(50) rtmsg+150(50).
   IF rtype = 'S'.
     gs_out-vbeln = vbeln.
@@ -106,11 +109,6 @@ FORM so .
     WHERE new_contractid = @gs_out-new_contractid.
 
     LOOP AT gt_item INTO wa.
-      CLEAR wa-field_style.
-      CLEAR stylelin.
-      stylelin-fieldname = 'MATNR'.
-      stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
-      INSERT stylelin INTO TABLE wa-field_style.
       IF wa-action EQ 'D'.
         DELETE FROM ztcrm_so_item
         WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.
@@ -121,6 +119,7 @@ FORM so .
         WHERE new_contractid = @gs_out-new_contractid AND new_contractdetailid = @wa-new_contractdetailid.
       ENDIF.
       CLEAR wa-action.
+      PERFORM set_style USING wa-matnr CHANGING wa.
       MODIFY gt_item FROM wa.
     ENDLOOP.
     COMMIT WORK.
@@ -174,4 +173,27 @@ FORM crm_so_sync  CHANGING p_rtype
 *     MSG   =
     .
 
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form zc
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM zc .
+  DATA:wa_head TYPE ztcrm_so_head,
+       lt_item TYPE TABLE OF ztcrm_so_item.
+  MOVE-CORRESPONDING gs_out TO wa_head.
+  LOOP AT gt_item INTO gs_item.
+    INSERT INITIAL LINE INTO TABLE lt_item ASSIGNING FIELD-SYMBOL(<lt_item>).
+    MOVE-CORRESPONDING gs_item TO <lt_item>.
+  ENDLOOP.
+  IF sy-subrc EQ 0.
+    MODIFY ztcrm_so_head FROM wa_head.
+    MODIFY ztcrm_so_item FROM TABLE lt_item.
+    COMMIT WORK.
+    MESSAGE '暂存成功' TYPE 'S'.
+  ENDIF.
 ENDFORM.

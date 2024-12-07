@@ -37,6 +37,7 @@ DATA:BEGIN OF gs_item.
        INCLUDE TYPE ztcrm_so_item.
 DATA:  maktx       TYPE maktx,
        field_style TYPE lvc_t_styl,
+       cellcolor   TYPE lvc_t_scol,
        sel,
      END OF gs_item,
      gt_item  LIKE TABLE OF gs_item,
