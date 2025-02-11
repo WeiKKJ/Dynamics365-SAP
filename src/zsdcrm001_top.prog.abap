@@ -36,6 +36,8 @@ DATA:  name_ag      TYPE name1,
 DATA:BEGIN OF gs_item.
        INCLUDE TYPE ztcrm_so_item.
 DATA:  maktx       TYPE maktx,
+       houdus      TYPE mara-houdus,
+       widths      TYPE mara-widths,
        field_style TYPE lvc_t_styl,
        cellcolor   TYPE lvc_t_scol,
        sel,

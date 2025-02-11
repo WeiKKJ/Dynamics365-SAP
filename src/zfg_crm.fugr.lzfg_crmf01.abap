@@ -158,6 +158,16 @@ FORM fillcond USING p_posnr
 *  CHECK P_KSCHL IS NOT INITIAL
 *  AND P_KBETR IS NOT INITIAL.
 
+  SELECT *
+    FROM prcd_elements AS prcd
+    WHERE kinak = ''
+    AND knumv = @p_vbak-knumv
+    AND kposn = @p_posnr
+    AND kschl = @p_kschl
+    INTO TABLE @DATA(lt_prcd)
+    .
+
+
   PERFORM getkalsm(zpubform) USING p_vbak p_kschl
         CHANGING kalsm.
 
@@ -168,10 +178,10 @@ FORM fillcond USING p_posnr
      AND kschl = p_kschl.
   o_cond-itm_number  = p_posnr.
   o_condx-itm_number = p_posnr.
-  o_cond-cond_st_no  = t683s-stunr.
-  o_condx-cond_st_no = t683s-stunr.
-  o_cond-cond_count  = '01'.
-  o_condx-cond_count = '01'.
+  o_cond-cond_st_no  = '010'.
+  o_condx-cond_st_no = '010'.
+  o_cond-cond_count  = '02'.
+  o_condx-cond_count = '02'.
   o_cond-cond_type   = p_kschl.
   o_condx-cond_type  = p_kschl.
 *  o_cond-cond_p_unt = '1'.
@@ -179,11 +189,12 @@ FORM fillcond USING p_posnr
   o_cond-cond_value  = p_kbetr.
   o_condx-cond_value = 'X'.
   o_cond-currency    = p_vbak-waerk.
-  IF t683s IS NOT INITIAL.
-    o_condx-updateflag = 'U'.
-  ELSE.
-    o_condx-updateflag = 'I'.
-  ENDIF.
+  o_condx-currency    = 'X'.
+*  IF t683s IS NOT INITIAL.
+  o_condx-updateflag = 'U'.
+*  ELSE.
+*    o_condx-updateflag = 'I'.
+*  ENDIF.
 ENDFORM.
 
 FORM addunit USING matnr wsmei CHANGING message.

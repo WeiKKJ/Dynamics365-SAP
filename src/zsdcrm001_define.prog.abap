@@ -15,3 +15,15 @@ DEFINE getdomdes.
     &3 = wa_domdes-ddtext.
   ENDIF.
 END-OF-DEFINITION.
+
+FORM checkmenge USING p_a CHANGING p_p TYPE p.
+  DATA:p_flg   TYPE char1,
+       p_atwrt TYPE atwrt.
+  CLEAR p_p.
+  p_atwrt = p_a.
+  PERFORM checkmenge(zpubform) CHANGING p_atwrt p_flg.
+  IF p_flg NE 'E'.
+    PERFORM delqfw(zpubform) CHANGING p_atwrt.
+    p_p = p_atwrt.
+  ENDIF.
+ENDFORM.

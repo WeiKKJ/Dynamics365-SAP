@@ -61,7 +61,8 @@ FUNCTION zfm_crm_so.
        schedule_linesx TYPE TABLE OF bapischdlx WITH HEADER LINE,
        order_text      TYPE TABLE OF bapisdtext WITH HEADER LINE,
        conditions_in   TYPE TABLE OF bapicond   WITH HEADER LINE,
-       conditions_inx  TYPE TABLE OF bapicondx  WITH HEADER LINE.
+       conditions_inx  TYPE TABLE OF bapicondx  WITH HEADER LINE,
+       logic_switch    LIKE  bapisdls.
   DATA:updateflag TYPE updkz_d.
 
   DATA:BEGIN OF text_stream OCCURS 0,
@@ -105,196 +106,199 @@ FUNCTION zfm_crm_so.
   ENDIF.
 
   "补0
-  PERFORM addzero(zpubform) CHANGING data-kunnr_we.
-  PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
   PERFORM addzero(zpubform) CHANGING data-vbeln.
-  " 数据校验  24.09.2024 15:18:51 by kkw
-  checkinitial data-new_contractid       'CRM合同ID'            .
-  checkinitial data-bstkd       '客户参考'            .
-  checkinitial data-auart       '销售凭证类型'          .
-  checkinitial data-kunnr_we    '送达方'             .
-  checkinitial data-kunnr_ag    '售达方'             .
-  checkinitial data-vkorg       '销售组织'            .
-  checkinitial data-vtweg       '分销渠道'            .
-  checkinitial data-prsdt       '凭证日期'            .
-  checkinitial data-guebg       '有效期自'            .
-  checkinitial data-gueen       '有效期至'            .
-  checkinitial data-zhtyf       '合同月份'            .
-  checkinitial data-spart       '产品组'             .
-  checkinitial data-zhwlx       '货物类型'            .
-  checkinitial data-vkbur       '销售办事处'           .
-  checkinitial data-vkgrp       '销售组'             .
-  checkinitial data-waerk       '凭证货币'            .
-  checkinitial data-kursk       '汇率'              .
-  checkinitial data-zterm       '付款条件'            .
-  checkinitial data-zhtjgfs     '合同加工方式'          .
-  checkinitial data-zdjbl       '定金比例'            .
-  checkinitial data-zisdxs      '销售类型'            .
-  checkinitial data-zcpyt       '产品用途'            .
+  IF NOT action EQ 'D'.
+    PERFORM addzero(zpubform) CHANGING data-kunnr_we.
+    PERFORM addzero(zpubform) CHANGING data-kunnr_ag.
 
-  DATA(comp) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( data ) )->components.
-  LOOP AT comp ASSIGNING FIELD-SYMBOL(<comp>).
-    ASSIGN COMPONENT <comp>-name OF STRUCTURE data TO FIELD-SYMBOL(<data_value>).
-    IF sy-subrc EQ 0.
-      PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
-      UNASSIGN <data_value>.
-      IF rtmsg IS NOT INITIAL.
+    " 数据校验  24.09.2024 15:18:51 by kkw
+    checkinitial data-new_contractid       'CRM合同ID'            .
+    checkinitial data-bstkd       '客户参考'            .
+    checkinitial data-auart       '销售凭证类型'          .
+    checkinitial data-kunnr_we    '送达方'             .
+    checkinitial data-kunnr_ag    '售达方'             .
+    checkinitial data-vkorg       '销售组织'            .
+    checkinitial data-vtweg       '分销渠道'            .
+    checkinitial data-prsdt       '凭证日期'            .
+    checkinitial data-guebg       '有效期自'            .
+    checkinitial data-gueen       '有效期至'            .
+    checkinitial data-zhtyf       '合同月份'            .
+    checkinitial data-spart       '产品组'             .
+    checkinitial data-zhwlx       '货物类型'            .
+    checkinitial data-vkbur       '销售办事处'           .
+    checkinitial data-vkgrp       '销售组'             .
+    checkinitial data-waerk       '凭证货币'            .
+    checkinitial data-kursk       '汇率'              .
+    checkinitial data-zterm       '付款条件'            .
+    checkinitial data-zhtjgfs     '合同加工方式'          .
+    checkinitial data-zdjbl       '定金比例'            .
+    checkinitial data-zisdxs      '销售类型'            .
+    checkinitial data-zcpyt       '产品用途'            .
+
+    DATA(comp) = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( data ) )->components.
+    LOOP AT comp ASSIGNING FIELD-SYMBOL(<comp>).
+      ASSIGN COMPONENT <comp>-name OF STRUCTURE data TO FIELD-SYMBOL(<data_value>).
+      IF sy-subrc EQ 0.
+        PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
+        UNASSIGN <data_value>.
+        IF rtmsg IS NOT INITIAL.
+          fillmsg 'E' rtmsg.
+        ENDIF.
+      ENDIF.
+    ENDLOOP.
+
+    LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>) GROUP BY ( new_contractdetailid = <item>-new_contractdetailid
+      index = GROUP INDEX size = GROUP SIZE
+       ) ASSIGNING FIELD-SYMBOL(<group>).
+      IF <group>-size NE 1.
+        rtmsg = |CRM合同明细ID[{ <group>-new_contractdetailid }]重复[{ <group>-size }]次，请核实明细数据|.
         fillmsg 'E' rtmsg.
       ENDIF.
-    ENDIF.
-  ENDLOOP.
-
-  LOOP AT data-items ASSIGNING FIELD-SYMBOL(<item>) GROUP BY ( new_contractdetailid = <item>-new_contractdetailid
-    index = GROUP INDEX size = GROUP SIZE
-     ) ASSIGNING FIELD-SYMBOL(<group>).
-    IF <group>-size NE 1.
-      rtmsg = |CRM合同明细ID[{ <group>-new_contractdetailid }]重复[{ <group>-size }]次，请核实明细数据|.
-      fillmsg 'E' rtmsg.
-    ENDIF.
-    LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
-      DATA(tabix) = sy-tabix.
-      mes = '第' && tabix && '行,' && '品名'           .
-      checkinitial <mem>-groes mes.
-      mes = '第' && tabix && '行,' && 'CRM合同明细ID'           .
-      checkinitial <mem>-new_contractdetailid mes.
+      LOOP AT GROUP <group> ASSIGNING FIELD-SYMBOL(<mem>).
+        DATA(tabix) = sy-tabix.
+        mes = '第' && tabix && '行,' && '品名'           .
+        checkinitial <mem>-groes mes.
+        mes = '第' && tabix && '行,' && 'CRM合同明细ID'           .
+        checkinitial <mem>-new_contractdetailid mes.
 *      mes = '第' && tabix && '行,' && '厚度'           .
 *      checkinitial <mem>-houdu mes.
-      mes = '第' && tabix && '行,' && '宽度'           .
-      checkinitial <mem>-width mes.
-      mes = '第' && tabix && '行,' && '材质'           .
-      checkinitial <mem>-caizhi mes.
-      mes = '第' && tabix && '行,' && '工厂'           .
-      checkinitial <mem>-werks mes.
-      mes = '第' && tabix && '行,' && '销售单位'         .
-      checkinitial <mem>-vrkme mes.
-      mes = '第' && tabix && '行,' && '订单数量'         .
-      checkinitial <mem>-kwmeng mes.
+        mes = '第' && tabix && '行,' && '宽度'           .
+        checkinitial <mem>-width mes.
+        mes = '第' && tabix && '行,' && '材质'           .
+        checkinitial <mem>-caizhi mes.
+        mes = '第' && tabix && '行,' && '工厂'           .
+        checkinitial <mem>-werks mes.
+        mes = '第' && tabix && '行,' && '销售单位'         .
+        checkinitial <mem>-vrkme mes.
+        mes = '第' && tabix && '行,' && '订单数量'         .
+        checkinitial <mem>-kwmeng mes.
 *      mes = '第' && tabix && '行,' && '价格'           .
 *      checkinitial <mem>-kbetr mes.
-      mes = '第' && tabix && '行,' && '税率'           .
-      checkinitial <mem>-mwskz mes.
-      mes = '第' && tabix && '行,' && '厚度类型'           .
-      checkinitial <mem>-houdulx mes.
+        mes = '第' && tabix && '行,' && '税率'           .
+        checkinitial <mem>-mwskz mes.
+        mes = '第' && tabix && '行,' && '厚度类型'           .
+        checkinitial <mem>-houdulx mes.
 
-      comp = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( <mem> ) )->components.
-      LOOP AT comp ASSIGNING <comp>.
-        ASSIGN COMPONENT <comp>-name OF STRUCTURE <mem> TO <data_value>.
-        IF sy-subrc EQ 0.
-          PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
-          UNASSIGN <data_value>.
-          IF rtmsg IS NOT INITIAL.
-            rtmsg = |明细第{ tabix }行,{ rtmsg }|.
-            fillmsg 'E' rtmsg.
+        comp = CAST cl_abap_structdescr( cl_abap_typedescr=>describe_by_data( <mem> ) )->components.
+        LOOP AT comp ASSIGNING <comp>.
+          ASSIGN COMPONENT <comp>-name OF STRUCTURE <mem> TO <data_value>.
+          IF sy-subrc EQ 0.
+            PERFORM domain_value_check USING <data_value> CHANGING rtmsg.
+            UNASSIGN <data_value>.
+            IF rtmsg IS NOT INITIAL.
+              rtmsg = |明细第{ tabix }行,{ rtmsg }|.
+              fillmsg 'E' rtmsg.
+            ENDIF.
           ENDIF.
-        ENDIF.
-      ENDLOOP.
+        ENDLOOP.
 *单位转换
-      CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
-        EXPORTING
-          input          = <mem>-vrkme
-          language       = sy-langu
-        IMPORTING
-          output         = <mem>-vrkme
-        EXCEPTIONS
-          unit_not_found = 1
-          OTHERS         = 2.
+        CALL FUNCTION 'CONVERSION_EXIT_CUNIT_INPUT'
+          EXPORTING
+            input          = <mem>-vrkme
+            language       = sy-langu
+          IMPORTING
+            output         = <mem>-vrkme
+          EXCEPTIONS
+            unit_not_found = 1
+            OTHERS         = 2.
+      ENDLOOP.
     ENDLOOP.
-  ENDLOOP.
 
-  SELECT
-    ttxit~*
-    FROM tvak
-    JOIN ttxern ON tvak~txtgr = ttxern~txtgr
-    JOIN ttxit ON ttxern~tdid = ttxit~tdid AND ttxern~tdobject = ttxit~tdobject
-    WHERE tvak~auart = @data-auart
-    AND ttxern~tdobject IN ( 'VBBK','VBBP' )
-    AND ttxern~tdid LIKE 'Z%'
-    AND ttxit~tdspras = @sy-langu
-    ORDER BY ttxit~tdobject,ttxit~tdid
-    INTO TABLE @DATA(lt_ttxit).
+    SELECT
+      ttxit~*
+      FROM tvak
+      JOIN ttxern ON tvak~txtgr = ttxern~txtgr
+      JOIN ttxit ON ttxern~tdid = ttxit~tdid AND ttxern~tdobject = ttxit~tdobject
+      WHERE tvak~auart = @data-auart
+      AND ttxern~tdobject IN ( 'VBBK','VBBP' )
+      AND ttxern~tdid LIKE 'Z%'
+      AND ttxit~tdspras = @sy-langu
+      ORDER BY ttxit~tdobject,ttxit~tdid
+      INTO TABLE @DATA(lt_ttxit).
 
-  " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
-  SELECT SINGLE
-    *
-    FROM ztcrm_so_head
-    WHERE new_contractid = @data-new_contractid
-    INTO CORRESPONDING FIELDS OF @wa_check-head
-    .
-  SELECT
-    *
-    FROM ztcrm_so_item
-    WHERE new_contractid = @data-new_contractid
-    INTO CORRESPONDING FIELDS OF TABLE @wa_check-item
-    .
-  SELECT
-    vbak~vbeln,
-    vbak~new_contractid,
-    vbkd~bstkd,
-    vbak~kunnr AS kunnr_ag,
-    we~kunnr AS kunnr_we
-    FROM vbak
-    LEFT JOIN vbkd ON vbak~vbeln = vbkd~vbeln AND vbkd~posnr = '000000'
-    LEFT JOIN vbpa AS we ON vbak~vbeln = we~vbeln AND we~parvw = 'WE' AND we~posnr = '000000'
-    WHERE new_contractid = @data-new_contractid
-    AND vbtyp = 'G'
-    INTO TABLE @DATA(lt_vbak)
-    .
-  LOOP AT lt_vbak ASSIGNING FIELD-SYMBOL(<lt_vbak>).
-    INSERT INITIAL LINE INTO TABLE wa_check-so ASSIGNING FIELD-SYMBOL(<so>).
-    MOVE-CORRESPONDING <lt_vbak> TO <so>.
-    MOVE-CORRESPONDING <lt_vbak> TO <so>-ak.
-    SELECT vbeln,posnr,new_contractdetailid FROM vbap WHERE vbeln = @<lt_vbak>-vbeln INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
-  ENDLOOP.
+    " 校验SO的存在性用于确定增删改  21.09.2024 11:38:03 by kkw
+    SELECT SINGLE
+      *
+      FROM ztcrm_so_head
+      WHERE new_contractid = @data-new_contractid
+      INTO CORRESPONDING FIELDS OF @wa_check-head
+      .
+    SELECT
+      *
+      FROM ztcrm_so_item
+      WHERE new_contractid = @data-new_contractid
+      INTO CORRESPONDING FIELDS OF TABLE @wa_check-item
+      .
+    SELECT
+      vbak~vbeln,
+      vbak~new_contractid,
+      vbkd~bstkd,
+      vbak~kunnr AS kunnr_ag,
+      we~kunnr AS kunnr_we
+      FROM vbak
+      LEFT JOIN vbkd ON vbak~vbeln = vbkd~vbeln AND vbkd~posnr = '000000'
+      LEFT JOIN vbpa AS we ON vbak~vbeln = we~vbeln AND we~parvw = 'WE' AND we~posnr = '000000'
+      WHERE new_contractid = @data-new_contractid
+      AND vbtyp = 'G'
+      INTO TABLE @DATA(lt_vbak)
+      .
+    LOOP AT lt_vbak ASSIGNING FIELD-SYMBOL(<lt_vbak>).
+      INSERT INITIAL LINE INTO TABLE wa_check-so ASSIGNING FIELD-SYMBOL(<so>).
+      MOVE-CORRESPONDING <lt_vbak> TO <so>.
+      MOVE-CORRESPONDING <lt_vbak> TO <so>-ak.
+      SELECT vbeln,posnr,new_contractdetailid FROM vbap WHERE vbeln = @<lt_vbak>-vbeln INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
+    ENDLOOP.
 
-  DESCRIBE TABLE wa_check-so LINES DATA(soline).
-  IF soline GT 1.
-    rtmsg = |CRM合同ID[{ data-new_contractid }]创建了[{ soline }]个SAP合同了，请核实SAP数据|.
-    fillmsg 'E' rtmsg.
-  ELSEIF soline EQ 1.
-    READ TABLE wa_check-so INTO DATA(wa_so) INDEX 1.
-    IF data-vbeln IS NOT INITIAL.
-      IF data-vbeln NE wa_so-ak-vbeln.
-        rtmsg = |CRM的合同号[{ data-vbeln }]和SAP的合同号[{ wa_so-ak-vbeln }]不一致|.
+    DESCRIBE TABLE wa_check-so LINES DATA(soline).
+    IF soline GT 1.
+      rtmsg = |CRM合同ID[{ data-new_contractid }]创建了[{ soline }]个SAP合同了，请核实SAP数据|.
+      fillmsg 'E' rtmsg.
+    ELSEIF soline EQ 1.
+      READ TABLE wa_check-so INTO DATA(wa_so) INDEX 1.
+      IF data-vbeln IS NOT INITIAL.
+        IF data-vbeln NE wa_so-ak-vbeln.
+          rtmsg = |CRM的合同号[{ data-vbeln }]和SAP的合同号[{ wa_so-ak-vbeln }]不一致|.
+          fillmsg 'E' rtmsg.
+        ENDIF.
+      ELSE.
+        data-vbeln = wa_so-ak-vbeln.
+      ENDIF.
+      IF NOT ( data-kunnr_ag = wa_so-kunnr_ag AND data-kunnr_we = wa_so-kunnr_we ).
+        rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
         fillmsg 'E' rtmsg.
       ENDIF.
+      SELECT
+        COUNT(*)
+        FROM vbkd
+        WHERE bstkd = @data-bstkd
+        AND substring( vbeln,1,5 ) = '00400'
+        AND vbeln NE @data-vbeln
+        .
+      IF sy-subrc EQ 0.
+        rtmsg = |外部合同号[{ data-bstkd }]已存在|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
+      IF data-province IS INITIAL.
+        data-province = wa_check-head-province.
+      ENDIF.
+      IF data-city IS INITIAL.
+        data-city = wa_check-head-city.
+      ENDIF.
+      IF data-county IS INITIAL.
+        data-county = wa_check-head-county.
+      ENDIF.
     ELSE.
-      data-vbeln = wa_so-ak-vbeln.
+      SELECT
+        COUNT(*)
+        FROM vbkd
+        WHERE bstkd = @data-bstkd
+        .
+      IF sy-subrc EQ 0.
+        rtmsg = |外部合同号[{ data-bstkd }]已存在|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
     ENDIF.
-    IF NOT ( data-kunnr_ag = wa_so-kunnr_ag AND data-kunnr_we = wa_so-kunnr_we ).
-      rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
-      fillmsg 'E' rtmsg.
-    ENDIF.
-    SELECT
-      COUNT(*)
-      FROM vbkd
-      WHERE bstkd = @data-bstkd
-      AND substring( vbeln,1,5 ) = '00400'
-      AND vbeln NE @data-vbeln
-      .
-    IF sy-subrc EQ 0.
-      rtmsg = |外部合同号{ data-bstkd }已存在|.
-      fillmsg 'E' rtmsg.
-    ENDIF.
-    IF data-province IS INITIAL.
-      data-province = wa_check-head-province.
-    ENDIF.
-    IF data-city IS INITIAL.
-      data-city = wa_check-head-city.
-    ENDIF.
-    IF data-county IS INITIAL.
-      data-county = wa_check-head-county.
-    ENDIF.
-  ELSE.
-    SELECT
-      COUNT(*)
-      FROM vbkd
-      WHERE bstkd = @data-bstkd
-      .
-    IF sy-subrc EQ 0.
-      rtmsg = |外部合同号{ data-bstkd }已存在|.
-      fillmsg 'E' rtmsg.
-    ENDIF.
-  ENDIF.
+  ENDIF."删除操作无需校验
 
   CASE action.
     WHEN 'S'.
@@ -395,20 +399,24 @@ FUNCTION zfm_crm_so.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
-
-      CLEAR: sales_header_in        .
-      CLEAR: sales_header_inx       .
-      CLEAR: salesdocument_ex       .
-      CLEAR: return                 ,    return[]               .
-      CLEAR: sales_items_in         ,    sales_items_in[]       .
-      CLEAR: sales_items_inx        ,    sales_items_inx[]      .
-      CLEAR: sales_partners         ,    sales_partners[]       .
-      CLEAR: sales_schedules_in     ,    sales_schedules_in[]   .
-      CLEAR: sales_schedules_inx    ,    sales_schedules_inx[]  .
-      CLEAR: sales_conditions_in    ,    sales_conditions_in[]  .
-      CLEAR: sales_conditions_inx   ,    sales_conditions_inx[] .
-      CLEAR: order_text             ,    order_text[]           .
-      CLEAR: extensionin            ,    extensionin[]          .
+      IF data-vbeln IS NOT INITIAL.
+        rtmsg = |外部合同号已创建过销售合同[{ data-vbeln }]|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
+      CLEAR:sales_header_in        .
+      CLEAR:sales_header_inx       .
+      CLEAR:salesdocument_ex       .
+      CLEAR:return                 ,    return[]               .
+      CLEAR:sales_items_in         ,    sales_items_in[]       .
+      CLEAR:sales_items_inx        ,    sales_items_inx[]      .
+      CLEAR:sales_partners         ,    sales_partners[]       .
+      CLEAR:sales_schedules_in     ,    sales_schedules_in[]   .
+      CLEAR:sales_schedules_inx    ,    sales_schedules_inx[]  .
+      CLEAR:sales_conditions_in    ,    sales_conditions_in[]  .
+      CLEAR:sales_conditions_inx   ,    sales_conditions_inx[] .
+      CLEAR:order_text             ,    order_text[]           .
+      CLEAR:extensionin            ,    extensionin[]          .
+      CLEAR:logic_switch.
 
       "抬头
 *******************************************************20230214
@@ -546,23 +554,136 @@ FUNCTION zfm_crm_so.
             UNASSIGN <zlongtext>.
           ENDIF.
         ENDLOOP.
-        IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
-          CLEAR:sales_conditions_in,sales_conditions_inx.
-          sales_conditions_in-itm_number = <item>-posnr.
-          sales_conditions_in-cond_type  = 'ZPR0'.
-          sales_conditions_in-cond_value = <item>-kbetr.
-*          sales_conditions_in-cond_p_unt = 1.
-          sales_conditions_in-currency   = data-waerk.
-          PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
-          APPEND:sales_conditions_in,sales_conditions_inx.
-        ENDIF.
+        CASE data-auart.
+          WHEN 'ZCQ1' OR 'ZCQ3' OR 'ZCQ4'.
+            CLEAR:sales_conditions_in,sales_conditions_inx.
+            sales_conditions_in-itm_number = <item>-posnr.
+            sales_conditions_in-cond_type  = 'ZPR0'.
+            sales_conditions_in-cond_value = <item>-kbetr.
+            sales_conditions_in-currency   = data-waerk.
+            PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
+            APPEND:sales_conditions_in,sales_conditions_inx.
+          WHEN 'ZCQ2'.
+            CLEAR:sales_conditions_in,sales_conditions_inx.
+            sales_conditions_in-itm_number = <item>-posnr.
+            sales_conditions_in-cond_type  = 'ZP02'.
+            sales_conditions_in-currency   = data-waerk.
+            SELECT SINGLE * FROM mara WHERE matnr = @<item>-matnr INTO @DATA(wa_mara).
+            SELECT SINGLE
+              konp~kbetr
+              FROM a901
+              JOIN konp ON konp~knumh = a901~knumh AND konp~kschl = 'ZP02'
+              WHERE a901~vkorg = @data-vkorg
+              AND a901~kunwe = @data-kunnr_we
+              AND a901~spart = @data-spart
+              AND a901~caizhi = @wa_mara-caizhi
+              AND a901~houdu = @wa_mara-houdu
+              AND a901~width = @wa_mara-width
+              AND a901~chandi = @wa_mara-chandi
+              AND a901~datab LE @data-prsdt
+              AND a901~datbi GE @data-prsdt
+              INTO @sales_conditions_in-cond_value
+              .
+            IF sy-subrc NE 0.
+              SELECT SINGLE
+                konda
+                FROM knvv
+                WHERE kunnr = @data-kunnr_ag
+                AND vkorg = @data-vkorg
+                AND vtweg = @data-vtweg
+                AND spart = '00'
+                INTO @DATA(konda)
+                .
+              SELECT SINGLE
+                konp~kbetr
+                FROM a900
+                JOIN konp ON konp~knumh = a900~knumh AND konp~kschl = 'ZP02'
+                WHERE a900~vkorg = @data-vkorg
+                AND a900~konda = @konda
+                AND a900~spart = @data-spart
+                AND a900~caizhi = @wa_mara-caizhi
+                AND a900~houdu = @wa_mara-houdu
+                AND a900~width = @wa_mara-width
+                AND a900~datab LE @data-prsdt
+                AND a900~datbi GE @data-prsdt
+                INTO @sales_conditions_in-cond_value
+                .
+              IF sy-subrc NE 0.
+                SELECT SINGLE
+                  konp~kbetr
+                  FROM a905
+                  JOIN konp ON konp~knumh = a905~knumh AND konp~kschl = 'ZP02'
+                  WHERE a905~vkorg = @data-vkorg
+                  AND a905~spart = @data-spart
+                  AND a905~datab LE @data-prsdt
+                  AND a905~datbi GE @data-prsdt
+                  INTO @sales_conditions_in-cond_value
+                  .
+              ENDIF.
+            ENDIF.
+            PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
+            sales_conditions_inx-updateflag = 'I'.
+            IF sales_conditions_in-cond_value NE 0.
+              APPEND:sales_conditions_in,sales_conditions_inx.
+            ENDIF.
+
+            CLEAR:sales_conditions_in,sales_conditions_inx.
+            sales_conditions_in-itm_number = <item>-posnr.
+            sales_conditions_in-cond_type  = 'ZP01'.
+            sales_conditions_in-currency   = data-waerk.
+            SELECT SINGLE
+              konp~kbetr
+              FROM a903
+              JOIN konp ON konp~knumh = a903~knumh AND konp~kschl = 'ZP01'
+              WHERE a903~vkorg = @data-vkorg
+              AND a903~spart = @data-spart
+              AND a903~caizhi = @wa_mara-caizhi
+              AND a903~houdu = @wa_mara-houdu
+              AND a903~width = @wa_mara-width
+              AND a903~chandi = @wa_mara-chandi
+              AND a903~datab LE @data-prsdt
+              AND a903~datbi GE @data-prsdt
+              INTO @sales_conditions_in-cond_value
+              .
+            IF sy-subrc NE 0.
+              SELECT SINGLE
+                konp~kbetr
+                FROM a902
+                JOIN konp ON konp~knumh = a902~knumh AND konp~kschl = 'ZP01'
+                WHERE a902~vkorg = @data-vkorg
+                AND a902~spart = @data-spart
+                AND a902~width = @wa_mara-width
+                AND a902~datab LE @data-prsdt
+                AND a902~datbi GE @data-prsdt
+                INTO @sales_conditions_in-cond_value
+                .
+              IF sy-subrc NE 0.
+                SELECT SINGLE
+                  konp~kbetr
+                  FROM a350
+                  JOIN konp ON konp~knumh = a350~knumh AND konp~kschl = 'ZP01'
+                  WHERE a350~vkorg = @data-vkorg
+                  AND a350~datab LE @data-prsdt
+                  AND a350~datbi GE @data-prsdt
+                  INTO @sales_conditions_in-cond_value
+                  .
+              ENDIF.
+            ENDIF.
+            PERFORM setbapix USING sales_conditions_in CHANGING sales_conditions_inx.
+            sales_conditions_inx-updateflag = 'I'.
+            IF sales_conditions_in-cond_value NE 0.
+              APPEND:sales_conditions_in,sales_conditions_inx.
+            ENDIF.
+        ENDCASE.
       ENDLOOP.
 **********************************
+      logic_switch-pricing = 'G'.
       SET UPDATE TASK LOCAL.
       CALL FUNCTION 'SD_SALESDOCUMENT_CREATE'
         EXPORTING
           sales_header_in      = sales_header_in
           sales_header_inx     = sales_header_inx
+*         logic_switch         = logic_switch
         IMPORTING
           salesdocument_ex     = salesdocument_ex
         TABLES
@@ -602,7 +723,7 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ENDIF.
     WHEN 'U'.
-      CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,updateflag,
+      CLEAR:salesdocument,order_item_in,order_item_inx,schedule_lines,schedule_linesx,updateflag,logic_switch,
       order_header,order_headerx,order_text,conditions_in,conditions_inx,subrc,sales_partners,sales_partnersc.
       REFRESH:
       order_item_in,order_item_inx,schedule_lines,schedule_linesx,
@@ -757,9 +878,38 @@ FUNCTION zfm_crm_so.
           MODIFY it_vbap INDEX tabix TRANSPORTING znodel.
           CLEAR:conditions_in,conditions_inx.
           IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
-            PERFORM fillcond USING it_vbap-posnr 'ZPR0'  <item>-kbetr vbak
-                  CHANGING conditions_in conditions_inx.
-            APPEND:conditions_in,conditions_inx.
+            SELECT *
+              FROM prcd_elements AS prcd
+              WHERE knumv = @vbak-knumv
+              AND kposn = @it_vbap-posnr
+              AND kinak = ''
+              AND kschl = 'ZPR0'
+              INTO TABLE @DATA(lt_prcd)
+              .
+            LOOP AT lt_prcd ASSIGNING FIELD-SYMBOL(<lt_prcd>).
+              CLEAR:conditions_in,conditions_inx.
+              setbapix 'conditions_in' 'itm_number' it_vbap-posnr.
+              setbapix 'conditions_in' 'cond_st_no' <lt_prcd>-stunr.
+              setbapix 'conditions_in' 'cond_count' <lt_prcd>-zaehk.
+              setbapix 'conditions_in' 'cond_type ' <lt_prcd>-kschl.
+              setbapix 'conditions_in' 'cond_value' <item>-kbetr.
+              setbapix 'conditions_in' 'currency  ' vbak-waerk.
+              setbapix 'conditions_in' 'cond_p_unt' <lt_prcd>-kpein.
+              setbapix 'conditions_in' 'cond_unit ' <lt_prcd>-kmein.
+
+              conditions_inx-itm_number = it_vbap-posnr.
+              conditions_inx-cond_st_no = <lt_prcd>-stunr.
+              conditions_inx-cond_count = <lt_prcd>-zaehk.
+              conditions_inx-cond_type  = <lt_prcd>-kschl.
+              IF <lt_prcd>-kinak = ''.
+                conditions_inx-updateflag = 'U'.
+              ELSEIF <lt_prcd>-kinak = 'M'.
+                CONTINUE.
+              ELSE.
+                conditions_inx-updateflag = 'D'.
+              ENDIF.
+              APPEND:conditions_in,conditions_inx.
+            ENDLOOP.
           ENDIF.
         ELSE.
           updateflag = 'I'.
@@ -769,16 +919,128 @@ FUNCTION zfm_crm_so.
           ENDIF.
 
           "价格
-          IF data-auart = 'ZCQ1' OR data-auart = 'ZCQ3' OR data-auart = 'ZCQ4'.
-            CLEAR:conditions_in,conditions_inx.
-            setbapix 'conditions_in' 'itm_number' <item>-posnr.
-            setbapix 'conditions_in' 'cond_type ' 'ZPR0'.
-            setbapix 'conditions_in' 'cond_value'  <item>-kbetr .
-            setbapix 'conditions_in' 'currency  ' data-waerk.
-            conditions_inx-itm_number = <item>-posnr.
-            conditions_inx-updateflag = updateflag.
-            APPEND:conditions_in,conditions_inx.
-          ENDIF.
+          CASE data-auart.
+            WHEN 'ZCQ1' OR 'ZCQ3' OR 'ZCQ4'.
+              CLEAR:conditions_in,conditions_inx.
+              conditions_in-itm_number = <item>-posnr.
+              conditions_in-cond_type  = 'ZPR0'.
+              conditions_in-cond_value = <item>-kbetr.
+              conditions_in-currency   = data-waerk.
+              PERFORM setbapix USING conditions_in CHANGING conditions_inx.
+              conditions_inx-updateflag = 'I'.
+              APPEND:conditions_in,conditions_inx.
+            WHEN 'ZCQ2'.
+              CLEAR:conditions_in,conditions_inx.
+              conditions_in-itm_number = <item>-posnr.
+              conditions_in-cond_type  = 'ZP02'.
+              conditions_in-currency   = data-waerk.
+              SELECT SINGLE * FROM mara WHERE matnr = @<item>-matnr INTO @wa_mara.
+              SELECT SINGLE
+                konp~kbetr
+                FROM a901
+                JOIN konp ON konp~knumh = a901~knumh AND konp~kschl = 'ZP02'
+                WHERE a901~vkorg = @data-vkorg
+                AND a901~kunwe = @data-kunnr_we
+                AND a901~spart = @data-spart
+                AND a901~caizhi = @wa_mara-caizhi
+                AND a901~houdu = @wa_mara-houdu
+                AND a901~width = @wa_mara-width
+                AND a901~chandi = @wa_mara-chandi
+                AND a901~datab LE @data-prsdt
+                AND a901~datbi GE @data-prsdt
+                INTO @conditions_in-cond_value
+                .
+              IF sy-subrc NE 0.
+                SELECT SINGLE
+                  konda
+                  FROM knvv
+                  WHERE kunnr = @data-kunnr_ag
+                  AND vkorg = @data-vkorg
+                  AND vtweg = @data-vtweg
+                  AND spart = '00'
+                  INTO @konda
+                  .
+                SELECT SINGLE
+                  konp~kbetr
+                  FROM a900
+                  JOIN konp ON konp~knumh = a900~knumh AND konp~kschl = 'ZP02'
+                  WHERE a900~vkorg = @data-vkorg
+                  AND a900~konda = @konda
+                  AND a900~spart = @data-spart
+                  AND a900~caizhi = @wa_mara-caizhi
+                  AND a900~houdu = @wa_mara-houdu
+                  AND a900~width = @wa_mara-width
+                  AND a900~datab LE @data-prsdt
+                  AND a900~datbi GE @data-prsdt
+                  INTO @conditions_in-cond_value
+                  .
+                IF sy-subrc NE 0.
+                  SELECT SINGLE
+                    konp~kbetr
+                    FROM a905
+                    JOIN konp ON konp~knumh = a905~knumh AND konp~kschl = 'ZP02'
+                    WHERE a905~vkorg = @data-vkorg
+                    AND a905~spart = @data-spart
+                    AND a905~datab LE @data-prsdt
+                    AND a905~datbi GE @data-prsdt
+                    INTO @conditions_in-cond_value
+                    .
+                ENDIF.
+              ENDIF.
+              PERFORM setbapix USING conditions_in CHANGING conditions_inx.
+              conditions_inx-updateflag = 'I'.
+              IF conditions_in-cond_value NE 0.
+                APPEND:conditions_in,conditions_inx.
+              ENDIF.
+
+              CLEAR:conditions_in,conditions_inx.
+              conditions_in-itm_number = <item>-posnr.
+              conditions_in-cond_type  = 'ZP01'.
+              conditions_in-currency   = data-waerk.
+              SELECT SINGLE
+                konp~kbetr
+                FROM a903
+                JOIN konp ON konp~knumh = a903~knumh AND konp~kschl = 'ZP01'
+                WHERE a903~vkorg = @data-vkorg
+                AND a903~spart = @data-spart
+                AND a903~caizhi = @wa_mara-caizhi
+                AND a903~houdu = @wa_mara-houdu
+                AND a903~width = @wa_mara-width
+                AND a903~chandi = @wa_mara-chandi
+                AND a903~datab LE @data-prsdt
+                AND a903~datbi GE @data-prsdt
+                INTO @conditions_in-cond_value
+                .
+              IF sy-subrc NE 0.
+                SELECT SINGLE
+                  konp~kbetr
+                  FROM a902
+                  JOIN konp ON konp~knumh = a902~knumh AND konp~kschl = 'ZP01'
+                  WHERE a902~vkorg = @data-vkorg
+                  AND a902~spart = @data-spart
+                  AND a902~width = @wa_mara-width
+                  AND a902~datab LE @data-prsdt
+                  AND a902~datbi GE @data-prsdt
+                  INTO @conditions_in-cond_value
+                  .
+                IF sy-subrc NE 0.
+                  SELECT SINGLE
+                    konp~kbetr
+                    FROM a350
+                    JOIN konp ON konp~knumh = a350~knumh AND konp~kschl = 'ZP01'
+                    WHERE a350~vkorg = @data-vkorg
+                    AND a350~datab LE @data-prsdt
+                    AND a350~datbi GE @data-prsdt
+                    INTO @conditions_in-cond_value
+                    .
+                ENDIF.
+              ENDIF.
+              PERFORM setbapix USING conditions_in CHANGING conditions_inx.
+              conditions_inx-updateflag = 'I'.
+              IF conditions_in-cond_value NE 0.
+                APPEND:conditions_in,conditions_inx.
+              ENDIF.
+          ENDCASE.
         ENDIF.
         setbapix 'order_item_in' 'itm_number' <item>-posnr.
         setbapix 'order_item_in' 'material  ' <item>-matnr.
@@ -858,11 +1120,13 @@ FUNCTION zfm_crm_so.
         APPEND:order_item_in,order_item_inx.
       ENDLOOP.
       SET UPDATE TASK LOCAL.
+      logic_switch-pricing = 'G'.
       CALL FUNCTION 'BAPI_SALESORDER_CHANGE'
         EXPORTING
           salesdocument    = salesdocument
           order_header_in  = order_header
           order_header_inx = order_headerx
+          logic_switch     = logic_switch
         TABLES
           return           = return
           order_item_in    = order_item_in

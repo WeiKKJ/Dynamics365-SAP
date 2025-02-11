@@ -242,7 +242,7 @@ ENDMODULE.
 *&---------------------------------------------------------------------*
 FORM callalv_item .
   gs_slayt_item-stylefname = 'FIELD_STYLE'.
-  gs_slayt_item-ctab_fname = 'CELLCOLOR '.
+  gs_slayt_item-ctab_fname = 'CELLCOLOR'.
   gs_slayt_item-box_fname  = 'SEL'.
   gs_slayt_item-zebra      = 'X'.
   PERFORM callalv_oo IN PROGRAM zvariant_compare

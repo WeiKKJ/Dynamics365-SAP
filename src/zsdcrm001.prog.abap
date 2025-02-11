@@ -68,10 +68,12 @@ FORM getdata.
     SELECT
       z~*,
       ag~name1 AS name_ag,
-      we~name1 AS name_we
+      we~name1 AS name_we,
+      tvgrt~bezei AS vkgrp_des
       FROM ztcrm_so_head AS z
       LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
       LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+      LEFT JOIN tvgrt ON z~vkgrp = tvgrt~vkgrp AND tvgrt~spras = @sy-langu
       WHERE z~vkorg = @p_vkorg
       AND z~spart IN @s_spart
       AND z~vkgrp IN @s_vkgrp
@@ -83,10 +85,12 @@ FORM getdata.
     SELECT
       z~*,
       ag~name1 AS name_ag,
-      we~name1 AS name_we
+      we~name1 AS name_we,
+      tvgrt~bezei AS vkgrp_des
       FROM ztcrm_so_head AS z
       LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
       LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+      LEFT JOIN tvgrt ON z~vkgrp = tvgrt~vkgrp AND tvgrt~spras = @sy-langu
       WHERE z~vkorg = @p_vkorg
       AND z~spart IN @s_spart
       AND z~vkgrp IN @s_vkgrp
@@ -98,122 +102,122 @@ FORM getdata.
     MESSAGE s000(oo) WITH '无数据'.
     EXIT.
   ENDIF.
-  SELECT
-    domname,
-    domvalue_l,
-    ddtext
-    FROM dd07t
-    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX','ZD_ZISJB' )
-    AND ddlanguage = @sy-langu
-    AND as4local = 'A'
-    ORDER BY domname,domvalue_l
-    INTO TABLE @lt_domdes
-    .
-
-  SELECT vkorg,vtext
-    FROM tvkot
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvkot).
-  SELECT vtweg,vtext
-    FROM tvtwt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvtwt).
-  SELECT vkbur,bezei
-    FROM tvkbt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvkbt).
-  SELECT vkgrp,bezei
-    FROM tvgrt
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tvgrt).
-  SELECT spart,vtext
-    FROM tspat
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_tspat).
-  SELECT kdgrp,ktext
-    FROM t151t
-    WHERE spras = @sy-langu
-    INTO TABLE @DATA(lt_t151t).
-  SELECT zid,zname
-    FROM ztsd226
-    FOR ALL ENTRIES IN @gt_out
-    WHERE zid = @gt_out-province
-    OR zid = @gt_out-city
-    OR zid = @gt_out-county
-    INTO TABLE @DATA(lt_226).
-  SELECT auart,bezei
-    FROM tvakt
-    WHERE spras = @sy-langu
-  INTO TABLE @DATA(lt_tvakt).
-  LOOP AT gt_out INTO gs_out.
-    getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
-    getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
-    getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
-    getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
-    getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
-    getdomdes 'ZD_ZISJB' gs_out-zISJB gs_out-zisjb_des.
-    READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
-    IF sy-subrc EQ 0.
-      gs_out-vkorg_des = wa1-vtext.
-    ENDIF.
-    READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
-    IF sy-subrc EQ 0.
-      gs_out-vtweg_des = wa2-vtext.
-    ENDIF.
-    READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
-    IF sy-subrc EQ 0.
-      gs_out-vkbur_des = wa3-bezei.
-    ENDIF.
-    READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
-    IF sy-subrc EQ 0.
-      gs_out-vkgrp_des = wa4-bezei.
-    ENDIF.
-    READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
-    IF sy-subrc EQ 0.
-      gs_out-spart_des = wa5-vtext.
-    ENDIF.
-    READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
-    IF sy-subrc EQ 0.
-      gs_out-kdgrp_des = wa6-ktext.
-    ENDIF.
-    READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
-    IF sy-subrc EQ 0.
-      gs_out-province_des = wa226-zname.
-    ENDIF.
-    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
-    IF sy-subrc EQ 0.
-      gs_out-city_des = wa226-zname.
-    ENDIF.
-    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
-    IF sy-subrc EQ 0.
-      gs_out-county_des = wa226-zname.
-    ENDIF.
-    READ TABLE lt_tvakt INTO DATA(wa7) WITH KEY auart = gs_out-auart.
-    IF sy-subrc EQ 0.
-      gs_out-auart_des = wa7-bezei.
-    ENDIF.
-    IF gs_out-zisck = 'X'.
-      gs_out-zisck_des = '出口'.
-    ELSE.
-      gs_out-zisck_des = '非出口'.
-    ENDIF.
-    IF gs_out-ztt = 'X'.
-      gs_out-ztt_des = '是'.
-    ELSE.
-      gs_out-ztt_des = '否'.
-    ENDIF.
-    IF gs_out-ziscj = 'X'.
-      gs_out-ziscj_des = '是'.
-    ELSE.
-      gs_out-ziscj_des = '否'.
-    ENDIF.
-    IF gs_out-yl1 = 'X'.
-      gs_out-yl1_des = '是'.
-    ELSE.
-      gs_out-yl1_des = '否'.
-    ENDIF.
-    MODIFY gt_out FROM gs_out.
-  ENDLOOP.
+*  SELECT
+*    domname,
+*    domvalue_l,
+*    ddtext
+*    FROM dd07t
+*    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX','ZD_ZISJB' )
+*    AND ddlanguage = @sy-langu
+*    AND as4local = 'A'
+*    ORDER BY domname,domvalue_l
+*    INTO TABLE @lt_domdes
+*    .
+*
+*  SELECT vkorg,vtext
+*    FROM tvkot
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_tvkot).
+*  SELECT vtweg,vtext
+*    FROM tvtwt
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_tvtwt).
+*  SELECT vkbur,bezei
+*    FROM tvkbt
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_tvkbt).
+*  SELECT vkgrp,bezei
+*    FROM tvgrt
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_tvgrt).
+*  SELECT spart,vtext
+*    FROM tspat
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_tspat).
+*  SELECT kdgrp,ktext
+*    FROM t151t
+*    WHERE spras = @sy-langu
+*    INTO TABLE @DATA(lt_t151t).
+*  SELECT zid,zname
+*    FROM ztsd226
+*    FOR ALL ENTRIES IN @gt_out
+*    WHERE zid = @gt_out-province
+*    OR zid = @gt_out-city
+*    OR zid = @gt_out-county
+*    INTO TABLE @DATA(lt_226).
+*  SELECT auart,bezei
+*    FROM tvakt
+*    WHERE spras = @sy-langu
+*  INTO TABLE @DATA(lt_tvakt).
+*  LOOP AT gt_out INTO gs_out.
+*    getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
+*    getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
+*    getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
+*    getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
+*    getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
+*    getdomdes 'ZD_ZISJB' gs_out-zISJB gs_out-zisjb_des.
+*    READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
+*    IF sy-subrc EQ 0.
+*      gs_out-vkorg_des = wa1-vtext.
+*    ENDIF.
+*    READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
+*    IF sy-subrc EQ 0.
+*      gs_out-vtweg_des = wa2-vtext.
+*    ENDIF.
+*    READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
+*    IF sy-subrc EQ 0.
+*      gs_out-vkbur_des = wa3-bezei.
+*    ENDIF.
+*    READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
+*    IF sy-subrc EQ 0.
+*      gs_out-vkgrp_des = wa4-bezei.
+*    ENDIF.
+*    READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
+*    IF sy-subrc EQ 0.
+*      gs_out-spart_des = wa5-vtext.
+*    ENDIF.
+*    READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
+*    IF sy-subrc EQ 0.
+*      gs_out-kdgrp_des = wa6-ktext.
+*    ENDIF.
+*    READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
+*    IF sy-subrc EQ 0.
+*      gs_out-province_des = wa226-zname.
+*    ENDIF.
+*    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
+*    IF sy-subrc EQ 0.
+*      gs_out-city_des = wa226-zname.
+*    ENDIF.
+*    READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
+*    IF sy-subrc EQ 0.
+*      gs_out-county_des = wa226-zname.
+*    ENDIF.
+*    READ TABLE lt_tvakt INTO DATA(wa7) WITH KEY auart = gs_out-auart.
+*    IF sy-subrc EQ 0.
+*      gs_out-auart_des = wa7-bezei.
+*    ENDIF.
+*    IF gs_out-zisck = 'X'.
+*      gs_out-zisck_des = '出口'.
+*    ELSE.
+*      gs_out-zisck_des = '非出口'.
+*    ENDIF.
+*    IF gs_out-ztt = 'X'.
+*      gs_out-ztt_des = '是'.
+*    ELSE.
+*      gs_out-ztt_des = '否'.
+*    ENDIF.
+*    IF gs_out-ziscj = 'X'.
+*      gs_out-ziscj_des = '是'.
+*    ELSE.
+*      gs_out-ziscj_des = '否'.
+*    ENDIF.
+*    IF gs_out-yl1 = 'X'.
+*      gs_out-yl1_des = '是'.
+*    ELSE.
+*      gs_out-yl1_des = '否'.
+*    ENDIF.
+*    MODIFY gt_out FROM gs_out.
+*  ENDLOOP.
 ENDFORM.
 
 *---------------------------------------------------------------------*
@@ -413,6 +417,7 @@ FORM getitems .
   ENDIF.
   READ TABLE rows ASSIGNING FIELD-SYMBOL(<row>) INDEX 1.
   READ TABLE gt_out INTO gs_out INDEX <row>-row_id.
+  PERFORM get_head USING gs_out-new_contractid.
   CLEAR:gt_item.
   SELECT
     z~*
@@ -481,6 +486,8 @@ FORM getitems .
       ADD 10 TO posnr.
       <gt_item>-posnr = posnr.
     ENDIF.
+    PERFORM checkmenge USING <gt_item>-houdu CHANGING <gt_item>-houdus.
+    PERFORM checkmenge USING <gt_item>-width CHANGING <gt_item>-widths.
     PERFORM set_style USING <gt_item>-matnr CHANGING <gt_item>.
     LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
       gs_longtext_im-sapmk = 'SD'.
@@ -584,6 +591,9 @@ FORM fillfldct .
             'KBETR ' 'ZTCRM_SO_ITEM' 'KBETR ' '金额       '    ,
             'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'    ,
             'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂       '    ,
+            'YL6 ' 'ZTCRM_SO_ITEM' 'YL6' '套筒类型       '    ,
+            'YL11 ' 'ZTCRM_SO_ITEM' 'YL11' '单卷重量       '    ,
+            'YL12 ' 'ZTCRM_SO_ITEM' 'YL12' '成品用途       '    ,
             'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态     '    .
     WHEN '15'.
       PERFORM catset TABLES gt_fldct_item USING:
@@ -615,7 +625,7 @@ FORM fillfldct .
   ENDCASE.
   PERFORM catset TABLES gt_fldct_item USING:
         'BMTHOUDU ' 'ZTCRM_SO_ITEM' 'BMTHOUDU' 'BMT厚度'  ,
-        'TCTHOOUDU ' 'ZTCRM_SO_ITEM' 'TCTHOOUDU' 'TCT厚度'  ,
+        'TCTHOUDU ' 'ZTCRM_SO_ITEM' 'TCTHOUDU' 'TCT厚度'  ,
         'TCTPHOUDU ' 'ZTCRM_SO_ITEM' 'TCTPHOUDU' 'TCTP厚度'  ,
         'HOUDULX ' 'ZTCRM_SO_ITEM' 'HOUDULX' '厚度类型'  .
   LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>).
@@ -623,6 +633,8 @@ FORM fillfldct .
       WHEN 'MATNR'.
         <fldct>-edit = 'X'.
         <fldct>-f4availabl = 'X'.
+      WHEN 'YL6' OR 'YL11' OR 'YL12'.
+        <fldct>-edit = 'X'.
     ENDCASE.
   ENDLOOP.
 
@@ -636,10 +648,13 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 FORM set_style USING VALUE(p_matnr) CHANGING p_item LIKE gs_item.
   CLEAR:p_item-field_style,p_item-cellcolor.
-  CLEAR stylelin.
-  stylelin-fieldname = 'MATNR'.
   IF p_item-action = ''.
-    stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
+    LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>) WHERE edit = 'X'.
+      CLEAR stylelin.
+      stylelin-fieldname = <fldct>-fieldname.
+      stylelin-style = cl_gui_alv_grid=>mc_style_disabled.
+      INSERT stylelin INTO TABLE p_item-field_style.
+    ENDLOOP.
     SELECT SINGLE
       vbap~matnr,
       makt~maktx
@@ -663,23 +678,64 @@ FORM set_style USING VALUE(p_matnr) CHANGING p_item LIKE gs_item.
       <cellcolor>-color-inv = 0 .
     ENDIF.
   ELSE."action
-    stylelin-style = cl_gui_alv_grid=>mc_style_enabled.
-    SELECT SINGLE
-      mara~matnr,
-      makt~maktx
-      FROM mara
-      LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
-      WHERE mara~chandi = @p_item-chandi
-      AND mara~caizhi = @p_item-caizhi
-      AND mara~width = @p_item-width
-      AND mara~houdu = @p_item-houdu
-      AND mara~yl2 = @p_item-yl2
-      AND mara~yl3 = @p_item-yl3
-      AND mara~yl4 = @p_item-yl4
-      AND mara~hcl = @p_item-hcl
-      AND mara~groes = @p_item-groes
-      INTO ( @DATA(matnr),@DATA(maktx) )
-      .
+    LOOP AT gt_fldct_item ASSIGNING <fldct> WHERE edit = 'X'.
+      CLEAR stylelin.
+      stylelin-fieldname = <fldct>-fieldname.
+      stylelin-style = cl_gui_alv_grid=>mc_style_enabled.
+      INSERT stylelin INTO TABLE p_item-field_style.
+    ENDLOOP.
+    CASE gs_out-spart.
+      WHEN '11' OR '12' OR '13'.
+        SELECT SINGLE
+          mara~matnr,
+          makt~maktx
+          FROM mara
+          LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+          WHERE mara~spart = @gs_out-spart
+          AND mara~groes = @p_item-groes
+          AND mara~houdus = @p_item-houdus
+          AND mara~widths = @p_item-widths
+          AND mara~chandi = @p_item-chandi
+          AND mara~caizhi = @p_item-caizhi
+          INTO ( @DATA(matnr),@DATA(maktx) )
+          .
+      WHEN '14'.
+        SELECT SINGLE
+          mara~matnr,
+          makt~maktx
+          FROM mara
+          LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+          WHERE mara~spart = @gs_out-spart
+          AND mara~groes = @p_item-groes
+          AND mara~houdus = @p_item-houdus
+          AND mara~widths = @p_item-widths
+*          AND mara~chandi = @p_item-chandi
+          AND mara~chandi = '自产'"  https://zentao.shinmade.com/task-view-31640.html 20250113修改： 13.01.2025 13:29:25 by kkw
+          AND mara~caizhi = @p_item-caizhi
+          AND mara~yl3 = @p_item-yl3
+          AND mara~yl4 = @p_item-yl4
+          AND mara~hcl = @p_item-hcl
+          INTO ( @matnr,@maktx )
+          .
+      WHEN '15'.
+        SELECT SINGLE
+          mara~matnr,
+          makt~maktx
+          FROM mara
+          LEFT JOIN makt ON mara~matnr = makt~matnr AND spras = @sy-langu
+          WHERE mara~spart = @gs_out-spart
+          AND mara~groes = @p_item-groes
+          AND mara~houdus = @p_item-houdus
+          AND mara~widths = @p_item-widths
+          AND mara~chandi = @p_item-chandi
+          AND mara~caizhi = @p_item-caizhi
+          AND mara~yl2 = @p_item-yl2
+          AND mara~yl3 = @p_item-yl3
+          AND mara~yl5 = @p_item-zsxqb
+          INTO ( @matnr,@maktx )
+          .
+    ENDCASE.
+
     IF p_matnr IS NOT INITIAL.
       IF p_matnr = matnr.
         p_item-maktx = maktx.
@@ -740,5 +796,140 @@ FORM set_style USING VALUE(p_matnr) CHANGING p_item LIKE gs_item.
       ENDIF.
     ENDIF.
   ENDIF."action
-  INSERT stylelin INTO TABLE p_item-field_style.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*& Form get_head
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM get_head USING VALUE(p_new_contractid).
+  CLEAR gs_out.
+  SELECT SINGLE
+    z~*,
+    ag~name1 AS name_ag,
+    we~name1 AS name_we
+    FROM ztcrm_so_head AS z
+    LEFT JOIN kna1 AS ag ON z~kunnr_ag = ag~kunnr
+    LEFT JOIN kna1 AS we ON z~kunnr_we = we~kunnr
+    WHERE z~new_contractid = @p_new_contractid
+    INTO CORRESPONDING FIELDS OF @gs_out.
+
+  SELECT
+    domname,
+    domvalue_l,
+    ddtext
+    FROM dd07t
+    WHERE domname IN ( 'ZD_ZISDXS','ZD_ZHTJGFS','ZD_ZHWLX','ZD_ZCPYT','ZD_ZCPSX','ZD_ZISJB' )
+    AND ddlanguage = @sy-langu
+    AND as4local = 'A'
+    ORDER BY domname,domvalue_l
+    INTO TABLE @lt_domdes
+    .
+
+  SELECT vkorg,vtext
+    FROM tvkot
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkot).
+  SELECT vtweg,vtext
+    FROM tvtwt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvtwt).
+  SELECT vkbur,bezei
+    FROM tvkbt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvkbt).
+  SELECT vkgrp,bezei
+    FROM tvgrt
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tvgrt).
+  SELECT spart,vtext
+    FROM tspat
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_tspat).
+  SELECT kdgrp,ktext
+    FROM t151t
+    WHERE spras = @sy-langu
+    INTO TABLE @DATA(lt_t151t).
+  SELECT zid,zname
+    FROM ztsd226
+    FOR ALL ENTRIES IN @gt_out
+    WHERE zid = @gt_out-province
+    OR zid = @gt_out-city
+    OR zid = @gt_out-county
+    INTO TABLE @DATA(lt_226).
+  SELECT auart,bezei
+    FROM tvakt
+    WHERE spras = @sy-langu
+  INTO TABLE @DATA(lt_tvakt).
+
+  getdomdes 'ZD_ZISDXS' gs_out-zisdxs gs_out-zisdxs_des.
+  getdomdes 'ZD_ZHTJGFS' gs_out-zhtjgfs gs_out-zhtjgfs_des.
+  getdomdes 'ZD_ZHWLX' gs_out-zhwlx gs_out-zhwlx_des.
+  getdomdes 'ZD_ZCPYT' gs_out-zcpyt gs_out-zcpyt_des.
+  getdomdes 'ZD_ZCPSX' gs_out-zcpsx gs_out-zcpsx_des.
+  getdomdes 'ZD_ZISJB' gs_out-zISJB gs_out-zisjb_des.
+  READ TABLE lt_tvkot INTO DATA(wa1) WITH KEY vkorg = gs_out-vkorg.
+  IF sy-subrc EQ 0.
+    gs_out-vkorg_des = wa1-vtext.
+  ENDIF.
+  READ TABLE lt_tvtwt INTO DATA(wa2) WITH KEY vtweg = gs_out-vtweg.
+  IF sy-subrc EQ 0.
+    gs_out-vtweg_des = wa2-vtext.
+  ENDIF.
+  READ TABLE lt_tvkbt INTO DATA(wa3) WITH KEY vkbur = gs_out-vkbur.
+  IF sy-subrc EQ 0.
+    gs_out-vkbur_des = wa3-bezei.
+  ENDIF.
+  READ TABLE lt_tvgrt INTO DATA(wa4) WITH KEY vkgrp = gs_out-vkgrp.
+  IF sy-subrc EQ 0.
+    gs_out-vkgrp_des = wa4-bezei.
+  ENDIF.
+  READ TABLE lt_tspat INTO DATA(wa5) WITH KEY spart = gs_out-spart.
+  IF sy-subrc EQ 0.
+    gs_out-spart_des = wa5-vtext.
+  ENDIF.
+  READ TABLE lt_t151t INTO DATA(wa6) WITH KEY kdgrp = gs_out-kdgrp.
+  IF sy-subrc EQ 0.
+    gs_out-kdgrp_des = wa6-ktext.
+  ENDIF.
+  READ TABLE lt_226 INTO DATA(wa226) WITH KEY zid = gs_out-province.
+  IF sy-subrc EQ 0.
+    gs_out-province_des = wa226-zname.
+  ENDIF.
+  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-city.
+  IF sy-subrc EQ 0.
+    gs_out-city_des = wa226-zname.
+  ENDIF.
+  READ TABLE lt_226 INTO wa226 WITH KEY zid = gs_out-county.
+  IF sy-subrc EQ 0.
+    gs_out-county_des = wa226-zname.
+  ENDIF.
+  READ TABLE lt_tvakt INTO DATA(wa7) WITH KEY auart = gs_out-auart.
+  IF sy-subrc EQ 0.
+    gs_out-auart_des = wa7-bezei.
+  ENDIF.
+  IF gs_out-zisck = 'X'.
+    gs_out-zisck_des = '出口'.
+  ELSE.
+    gs_out-zisck_des = '非出口'.
+  ENDIF.
+  IF gs_out-ztt = 'X'.
+    gs_out-ztt_des = '是'.
+  ELSE.
+    gs_out-ztt_des = '否'.
+  ENDIF.
+  IF gs_out-ziscj = 'X'.
+    gs_out-ziscj_des = '是'.
+  ELSE.
+    gs_out-ziscj_des = '否'.
+  ENDIF.
+  IF gs_out-yl1 = 'X'.
+    gs_out-yl1_des = '是'.
+  ELSE.
+    gs_out-yl1_des = '否'.
+  ENDIF.
+
 ENDFORM.

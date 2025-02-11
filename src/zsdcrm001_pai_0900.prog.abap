@@ -80,11 +80,30 @@ FORM so .
     MOVE-CORRESPONDING wa TO gs_itemso.
     APPEND gs_itemso TO gt_itemso.
   ENDLOOP.
-  IF sy-subrc NE 0 AND  action = 'I'.
-    DELETE FROM ztcrm_so_head WHERE new_contractid = @gs_out-new_contractid.
-    DELETE FROM ztcrm_so_item WHERE new_contractid = @gs_out-new_contractid.
-    COMMIT WORK.
-    MESSAGE '处理成功' TYPE 'S'.
+  IF sy-subrc NE 0 .
+    IF action = 'I'.
+      DELETE FROM ztcrm_so_head WHERE new_contractid = @gs_out-new_contractid.
+      DELETE FROM ztcrm_so_item WHERE new_contractid = @gs_out-new_contractid.
+      COMMIT WORK.
+      MESSAGE '处理成功' TYPE 'S'.
+    ELSE.
+      action = 'D'.
+      CALL FUNCTION 'ZFM_CRM_SO'
+        EXPORTING
+          action = action
+        IMPORTING
+          rtype  = rtype
+          rtmsg  = rtmsg
+          vbeln  = vbeln
+        CHANGING
+          data   = data.
+      IF rtype = 'S'.
+        DELETE FROM ztcrm_so_head WHERE new_contractid = @gs_out-new_contractid.
+        DELETE FROM ztcrm_so_item WHERE new_contractid = @gs_out-new_contractid.
+        COMMIT WORK.
+      ENDIF.
+      MESSAGE rtmsg TYPE rtype.
+    ENDIF.
     PERFORM getdata.
     LEAVE TO SCREEN 0.
   ENDIF.
