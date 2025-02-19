@@ -13,6 +13,11 @@ FUNCTION zfm_crm_so.
   zfmdatasave1 'ZFM_CRM_SO'.
   zfmdatasave2 'B'.
   COMMIT WORK.
+  DATA:kunnrx     TYPE abap_bool,
+       messtab    LIKE TABLE OF bdcmsgcoll,
+       ext_return TYPE TABLE OF bapiret2,
+       lv_msg     TYPE string.
+  CLEAR:kunnrx,messtab,ext_return,lv_msg.
   IF action NE 'S'.
     IF data IS INITIAL.
       fillmsg 'E' '请传入抬头数据后再调用本接口'.
@@ -264,8 +269,9 @@ FUNCTION zfm_crm_so.
         data-vbeln = wa_so-ak-vbeln.
       ENDIF.
       IF NOT ( data-kunnr_ag = wa_so-kunnr_ag AND data-kunnr_we = wa_so-kunnr_we ).
-        rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
-        fillmsg 'E' rtmsg.
+*        rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
+*        fillmsg 'E' rtmsg.
+        kunnrx = abap_true.
       ENDIF.
       SELECT
         COUNT(*)
@@ -701,11 +707,21 @@ FUNCTION zfm_crm_so.
           OTHERS               = 1.
 
       IF sy-subrc NE 0.
-        PERFORM msgtotext(zpubform) USING '' '' '' '' '' '' CHANGING rtmsg.
         ADD sy-subrc TO subrc.
       ENDIF.
+      CLEAR lv_msg.
       LOOP AT return WHERE type CA 'AEX'.
-        CONCATENATE return-message rtmsg INTO rtmsg SEPARATED BY '/'.
+        CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+          EXPORTING
+            msgid               = return-id
+            msgnr               = return-number
+            msgv1               = return-message_v1
+            msgv2               = return-message_v2
+            msgv3               = return-message_v3
+            msgv4               = return-message_v4
+          IMPORTING
+            message_text_output = lv_msg.
+        CONCATENATE lv_msg rtmsg INTO rtmsg SEPARATED BY '/'.
       ENDLOOP.
       IF sy-subrc EQ 0.
         ADD 4 TO subrc.
@@ -747,17 +763,6 @@ FUNCTION zfm_crm_so.
         rtmsg = |合同{ data-vbeln }不存在|.
         fillmsg 'E' rtmsg.
       ENDIF.
-*      SELECT
-*        COUNT(*)
-*        FROM vbkd
-*        WHERE bstkd = @data-bstkd
-*        AND substring( vbeln,1,5 ) = '00400'
-*        AND vbeln NE @data-vbeln
-*        .
-*      IF sy-subrc EQ 0.
-*        rtmsg = |外部合同号{ data-bstkd }已存在|.
-*        fillmsg 'E' rtmsg.
-*      ENDIF.
       "抬头
       salesdocument = data-vbeln.
 
@@ -1143,17 +1148,86 @@ FUNCTION zfm_crm_so.
           OTHERS           = 1.
 
       IF sy-subrc NE 0.
-        PERFORM msgtotext(zpubform) USING '' '' '' '' '' '' CHANGING rtmsg.
         ADD sy-subrc TO subrc.
       ENDIF.
+      CLEAR lv_msg.
       LOOP AT return WHERE type CA 'AEX'.
-        CONCATENATE return-message rtmsg INTO rtmsg SEPARATED BY '/'.
+        CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+          EXPORTING
+            msgid               = return-id
+            msgnr               = return-number
+            msgv1               = return-message_v1
+            msgv2               = return-message_v2
+            msgv3               = return-message_v3
+            msgv4               = return-message_v4
+          IMPORTING
+            message_text_output = lv_msg.
+        CONCATENATE lv_msg rtmsg INTO rtmsg SEPARATED BY '/'.
       ENDLOOP.
       IF sy-subrc NE 0 AND subrc EQ 0.
         SET UPDATE TASK LOCAL.
         PERFORM bapirun(zpubform)  USING 'S'.
         rtmsg = |更改销售合同成功，单号：[{ salesdocument }]|.
         vbeln = salesdocument.
+*& kkw BDC更改售、送达方
+        IF kunnrx = abap_true.
+          CLEAR subrc.
+          CALL FUNCTION 'ZFM_BDC_VA02_KUNNR'
+            EXPORTING
+*             CTU       = 'X'
+*             MODE      = 'N'
+*             UPDATE    = 'L'
+*             GROUP     =
+*             USER      =
+*             KEEP      =
+*             HOLDDATE  =
+*             NODATA    = '/'
+              vbeln_001 = CONV bdcdata-fval( data-vbeln )
+*             BSTKD_002 =
+              kunnr_003 = CONV bdcdata-fval( data-kunnr_ag )
+              kunnr_004 = CONV bdcdata-fval( data-kunnr_we )
+*             GUEBG_005 =
+*             GUEEN_006 =
+*             PRSDT_007 =
+*             VSBED_008 =
+*             BSTKD_009 =
+              kunnr_010 = CONV bdcdata-fval( data-kunnr_ag )
+              kunnr_011 = CONV bdcdata-fval( data-kunnr_we )
+*             GUEBG_012 =
+*             GUEEN_013 =
+*             PRSDT_014 =
+*             VSBED_015 =
+            IMPORTING
+              subrc     = subrc
+            TABLES
+              messtab   = messtab.
+          IF subrc NE 0.
+            rtmsg = |{ rtmsg },更改客户失败：|.
+            CALL FUNCTION 'CONVERT_BDCMSGCOLL_TO_BAPIRET2'
+              TABLES
+                imt_bdcmsgcoll = messtab
+                ext_return     = ext_return.
+            LOOP AT ext_return INTO DATA(wa_return) WHERE type CA 'AEX' OR ( type = 'S' AND number  = '344' )
+              OR ( type = 'S' AND id(1)  = 'Z' ).
+              CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+                EXPORTING
+                  msgid               = wa_return-id
+                  msgnr               = wa_return-number
+                  msgv1               = wa_return-message_v1
+                  msgv2               = wa_return-message_v2
+                  msgv3               = wa_return-message_v3
+                  msgv4               = wa_return-message_v4
+                IMPORTING
+                  message_text_output = lv_msg.
+              CONCATENATE rtmsg lv_msg INTO rtmsg SEPARATED BY '/'.
+            ENDLOOP.
+            fillmsg 'E' rtmsg.
+          ELSE.
+            rtmsg = |{ rtmsg },更改客户成功|.
+          ENDIF.
+        ENDIF.
+*& End  BDC更改售、送达方 18.02.2025 13:32:34
+
         fillmsg 'S' rtmsg.
       ELSE.
         PERFORM bapirun(zpubform) USING 'E'.
@@ -1189,11 +1263,23 @@ FUNCTION zfm_crm_so.
           OTHERS           = 1.
 
       IF sy-subrc NE 0.
-        PERFORM msgtotext(zpubform) USING '' '' '' '' '' '' CHANGING rtmsg.
         ADD sy-subrc TO subrc.
       ENDIF.
       LOOP AT return WHERE type CA 'AEX'.
-        CONCATENATE return-message rtmsg INTO rtmsg SEPARATED BY '/'.
+        CLEAR lv_msg.
+        LOOP AT return WHERE type CA 'AEX'.
+          CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+            EXPORTING
+              msgid               = return-id
+              msgnr               = return-number
+              msgv1               = return-message_v1
+              msgv2               = return-message_v2
+              msgv3               = return-message_v3
+              msgv4               = return-message_v4
+            IMPORTING
+              message_text_output = lv_msg.
+          CONCATENATE lv_msg rtmsg INTO rtmsg SEPARATED BY '/'.
+        ENDLOOP.
       ENDLOOP.
       IF sy-subrc = 0 OR subrc NE 0.
         PERFORM bapirun(zpubform) USING 'E'.
