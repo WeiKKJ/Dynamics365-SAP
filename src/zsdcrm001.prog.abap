@@ -594,7 +594,8 @@ FORM fillfldct .
             'YL6 ' 'ZTCRM_SO_ITEM' 'YL6' '套筒类型       '    ,
             'YL11 ' 'ZTCRM_SO_ITEM' 'YL11' '单卷重量       '    ,
             'YL12 ' 'ZTCRM_SO_ITEM' 'YL12' '成品用途       '    ,
-            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态     '    .
+            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态     '    ,
+            'ZDCGC' 'ZTCRM_SO_ITEM' 'ZDCGC' '镀层公差'    .
     WHEN '15'.
       PERFORM catset TABLES gt_fldct_item USING:
             'POSNR ' 'ZTCRM_SO_ITEM' 'POSNR ' '项目     '  ,
@@ -616,7 +617,8 @@ FORM fillfldct .
             'KBETR ' 'ZTCRM_SO_ITEM' 'KBETR ' '金额     '  ,
             'Z001  ' 'ZTCRM_SO_ITEM' 'Z001  ' '合同项目备注'  ,
             'WERKS ' 'ZTCRM_SO_ITEM' 'WERKS ' '工厂     '  ,
-            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态   '  .
+            'ACTION' 'ZTCRM_SO_ITEM' 'ACTION' '行状态   '  ,
+            'ZDCGC' 'ZTCRM_SO_ITEM' 'ZDCGC' '镀层公差'    .
     WHEN OTHERS.
       PERFORM catset TABLES gt_fldct_item USING:
             'POSNR ' 'ZTCRM_SO_ITEM' 'POSNR ' '项目     '  ,
@@ -627,7 +629,10 @@ FORM fillfldct .
         'BMTHOUDU ' 'ZTCRM_SO_ITEM' 'BMTHOUDU' 'BMT厚度'  ,
         'TCTHOUDU ' 'ZTCRM_SO_ITEM' 'TCTHOUDU' 'TCT厚度'  ,
         'TCTPHOUDU ' 'ZTCRM_SO_ITEM' 'TCTPHOUDU' 'TCTP厚度'  ,
-        'HOUDULX ' 'ZTCRM_SO_ITEM' 'HOUDULX' '厚度类型'  .
+        'HOUDULX ' 'ZTCRM_SO_ITEM' 'HOUDULX' '厚度类型'  ,
+        'ZBQHT' 'ZTCRM_SO_ITEM' 'ZBQHT' '标签厚度'  ,
+        'ZISXB' 'ZTCRM_SO_ITEM' 'ZISXB' '是否修边'  ,
+        'ZFT_WIDTH' 'ZTCRM_SO_ITEM' 'ZFT_WIDTH' '分条宽度'  .
   LOOP AT gt_fldct_item ASSIGNING FIELD-SYMBOL(<fldct>).
     CASE <fldct>-fieldname.
       WHEN 'MATNR'.

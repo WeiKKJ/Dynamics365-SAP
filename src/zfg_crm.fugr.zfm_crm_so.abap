@@ -272,6 +272,58 @@ FUNCTION zfm_crm_so.
 *        rtmsg = |CRM售达方[{ data-kunnr_ag }]和SAP的售达方[{ wa_so-kunnr_ag }]或者CRM送达方[{ data-kunnr_we }]和SAP的送达方[{ wa_so-kunnr_we }]不一致|.
 *        fillmsg 'E' rtmsg.
         kunnrx = abap_true.
+        CLEAR:subrc,lv_msg.
+        CALL FUNCTION 'ZFM_BDC_VA02_KUNNR'
+          EXPORTING
+*           CTU       = 'X'
+*           MODE      = 'N'
+*           UPDATE    = 'L'
+*           GROUP     =
+*           USER      =
+*           KEEP      =
+*           HOLDDATE  =
+*           NODATA    = '/'
+            vbeln_001 = CONV bdcdata-fval( data-vbeln )
+*           BSTKD_002 =
+            kunnr_003 = CONV bdcdata-fval( data-kunnr_ag )
+            kunnr_004 = CONV bdcdata-fval( data-kunnr_we )
+*           GUEBG_005 =
+*           GUEEN_006 =
+*           PRSDT_007 =
+*           VSBED_008 =
+*           BSTKD_009 =
+            kunnr_010 = CONV bdcdata-fval( data-kunnr_ag )
+            kunnr_011 = CONV bdcdata-fval( data-kunnr_we )
+*           GUEBG_012 =
+*           GUEEN_013 =
+*           PRSDT_014 =
+*           VSBED_015 =
+          IMPORTING
+            subrc     = subrc
+          TABLES
+            messtab   = messtab.
+        IF subrc NE 0.
+          rtmsg = |更改客户失败：|.
+          CALL FUNCTION 'CONVERT_BDCMSGCOLL_TO_BAPIRET2'
+            TABLES
+              imt_bdcmsgcoll = messtab
+              ext_return     = ext_return.
+          LOOP AT ext_return INTO DATA(wa_return) .
+            CLEAR lv_msg.
+            CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+              EXPORTING
+                msgid               = wa_return-id
+                msgnr               = wa_return-number
+                msgv1               = wa_return-message_v1
+                msgv2               = wa_return-message_v2
+                msgv3               = wa_return-message_v3
+                msgv4               = wa_return-message_v4
+              IMPORTING
+                message_text_output = lv_msg.
+            CONCATENATE rtmsg lv_msg INTO rtmsg SEPARATED BY '/'.
+          ENDLOOP.
+          fillmsg 'E' rtmsg.
+        ENDIF.
       ENDIF.
       SELECT
         COUNT(*)
@@ -898,7 +950,8 @@ FUNCTION zfm_crm_so.
               setbapix 'conditions_in' 'cond_count' <lt_prcd>-zaehk.
               setbapix 'conditions_in' 'cond_type ' <lt_prcd>-kschl.
               setbapix 'conditions_in' 'cond_value' <item>-kbetr.
-              setbapix 'conditions_in' 'currency  ' vbak-waerk.
+*              setbapix 'conditions_in' 'currency  ' vbak-waerk.
+              setbapix 'conditions_in' 'currency  ' data-waerk.
               setbapix 'conditions_in' 'cond_p_unt' <lt_prcd>-kpein.
               setbapix 'conditions_in' 'cond_unit ' <lt_prcd>-kmein.
 
@@ -1170,67 +1223,72 @@ FUNCTION zfm_crm_so.
         rtmsg = |更改销售合同成功，单号：[{ salesdocument }]|.
         vbeln = salesdocument.
 *& kkw BDC更改售、送达方
-        IF kunnrx = abap_true.
-          CLEAR subrc.
-          CALL FUNCTION 'ZFM_BDC_VA02_KUNNR'
-            EXPORTING
-*             CTU       = 'X'
-*             MODE      = 'N'
-*             UPDATE    = 'L'
-*             GROUP     =
-*             USER      =
-*             KEEP      =
-*             HOLDDATE  =
-*             NODATA    = '/'
-              vbeln_001 = CONV bdcdata-fval( data-vbeln )
-*             BSTKD_002 =
-              kunnr_003 = CONV bdcdata-fval( data-kunnr_ag )
-              kunnr_004 = CONV bdcdata-fval( data-kunnr_we )
-*             GUEBG_005 =
-*             GUEEN_006 =
-*             PRSDT_007 =
-*             VSBED_008 =
-*             BSTKD_009 =
-              kunnr_010 = CONV bdcdata-fval( data-kunnr_ag )
-              kunnr_011 = CONV bdcdata-fval( data-kunnr_we )
-*             GUEBG_012 =
-*             GUEEN_013 =
-*             PRSDT_014 =
-*             VSBED_015 =
-            IMPORTING
-              subrc     = subrc
-            TABLES
-              messtab   = messtab.
-          IF subrc NE 0.
-            rtmsg = |{ rtmsg },更改客户失败：|.
-            CALL FUNCTION 'CONVERT_BDCMSGCOLL_TO_BAPIRET2'
-              TABLES
-                imt_bdcmsgcoll = messtab
-                ext_return     = ext_return.
-            LOOP AT ext_return INTO DATA(wa_return) WHERE type CA 'AEX' OR ( type = 'S' AND number  = '344' )
-              OR ( type = 'S' AND id(1)  = 'Z' ).
-              CALL FUNCTION 'MESSAGE_TEXT_BUILD'
-                EXPORTING
-                  msgid               = wa_return-id
-                  msgnr               = wa_return-number
-                  msgv1               = wa_return-message_v1
-                  msgv2               = wa_return-message_v2
-                  msgv3               = wa_return-message_v3
-                  msgv4               = wa_return-message_v4
-                IMPORTING
-                  message_text_output = lv_msg.
-              CONCATENATE rtmsg lv_msg INTO rtmsg SEPARATED BY '/'.
-            ENDLOOP.
-            fillmsg 'E' rtmsg.
-          ELSE.
-            rtmsg = |{ rtmsg },更改客户成功|.
-          ENDIF.
-        ENDIF.
+*        IF kunnrx = abap_true.
+*          CLEAR subrc.
+*          CALL FUNCTION 'ZFM_BDC_VA02_KUNNR'
+*            EXPORTING
+**             CTU       = 'X'
+**             MODE      = 'N'
+**             UPDATE    = 'L'
+**             GROUP     =
+**             USER      =
+**             KEEP      =
+**             HOLDDATE  =
+**             NODATA    = '/'
+*              vbeln_001 = CONV bdcdata-fval( data-vbeln )
+**             BSTKD_002 =
+*              kunnr_003 = CONV bdcdata-fval( data-kunnr_ag )
+*              kunnr_004 = CONV bdcdata-fval( data-kunnr_we )
+**             GUEBG_005 =
+**             GUEEN_006 =
+**             PRSDT_007 =
+**             VSBED_008 =
+**             BSTKD_009 =
+*              kunnr_010 = CONV bdcdata-fval( data-kunnr_ag )
+*              kunnr_011 = CONV bdcdata-fval( data-kunnr_we )
+**             GUEBG_012 =
+**             GUEEN_013 =
+**             PRSDT_014 =
+**             VSBED_015 =
+*            IMPORTING
+*              subrc     = subrc
+*            TABLES
+*              messtab   = messtab.
+*          IF subrc NE 0.
+*            rtmsg = |{ rtmsg },更改客户失败：|.
+*            CALL FUNCTION 'CONVERT_BDCMSGCOLL_TO_BAPIRET2'
+*              TABLES
+*                imt_bdcmsgcoll = messtab
+*                ext_return     = ext_return.
+*            LOOP AT ext_return INTO DATA(wa_return) ."WHERE type CA 'AEX' OR ( type = 'S' AND number  = '344' )
+*              "OR ( type = 'S' AND id(1)  = 'Z' ).
+*              CALL FUNCTION 'MESSAGE_TEXT_BUILD'
+*                EXPORTING
+*                  msgid               = wa_return-id
+*                  msgnr               = wa_return-number
+*                  msgv1               = wa_return-message_v1
+*                  msgv2               = wa_return-message_v2
+*                  msgv3               = wa_return-message_v3
+*                  msgv4               = wa_return-message_v4
+*                IMPORTING
+*                  message_text_output = lv_msg.
+*              CONCATENATE rtmsg lv_msg INTO rtmsg SEPARATED BY '/'.
+*            ENDLOOP.
+*            fillmsg 'E' rtmsg.
+*        ELSE.
+*          rtmsg = |{ rtmsg },更改客户成功|.
+*        ENDIF.
+*        ENDIF.
 *& End  BDC更改售、送达方 18.02.2025 13:32:34
-
+        IF kunnrx = abap_true.
+          rtmsg = |{ rtmsg },更改客户成功|.
+        ENDIF.
         fillmsg 'S' rtmsg.
       ELSE.
         PERFORM bapirun(zpubform) USING 'E'.
+        IF kunnrx = abap_true.
+          rtmsg = |{ rtmsg },更改客户成功|.
+        ENDIF.
         fillmsg 'E' rtmsg.
       ENDIF.
     WHEN 'D'.
@@ -1286,7 +1344,7 @@ FUNCTION zfm_crm_so.
         fillmsg 'E' rtmsg.
       ELSE.
         PERFORM bapirun(zpubform)  USING 'S'.
-        rtmsg = |删除销售合同成功，单号：[{ salesdocument_ex }]|.
+        rtmsg = |删除销售合同成功，单号：[{ salesdocument }]|.
         fillmsg 'S' rtmsg.
       ENDIF.
     WHEN OTHERS.
