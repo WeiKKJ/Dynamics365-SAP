@@ -494,7 +494,7 @@ FUNCTION zfm_crm_bp_change.
 *--维护信用段数据
     CLEAR:lv_msg1.
     REFRESH lt_return_ukmbp1[].
-    PERFORM frm_add_ukmbp IN PROGRAM zsdb002 CHANGING lt_return_ukmbp1 .
+    PERFORM frm_add_ukmbp USING data wa_but000-partner CHANGING lt_return_ukmbp1.
     LOOP AT lt_return_frg1 WHERE type = 'E' OR type = 'A' OR type = 'X'.
       CONCATENATE lv_msg1 lt_return_frg1-message INTO lv_msg1.
     ENDLOOP.
@@ -502,6 +502,7 @@ FUNCTION zfm_crm_bp_change.
       CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
         EXPORTING
           wait = abap_true.
+      fillmsg 'S' rtmsg.
     ELSE.
       CALL FUNCTION 'BAPI_TRANSACTION_ROLLBACK'
 *       IMPORTING
@@ -512,10 +513,10 @@ FUNCTION zfm_crm_bp_change.
     ENDIF.
   ELSE.
     rtmsg = lv_msg.
-    fillmsg 'S' rtmsg.
+    fillmsg 'E' rtmsg.
   ENDIF.
 
-  fillmsg 'S' '修改客户成功'.
+
 
   zfmdatasave2 'R'.
 

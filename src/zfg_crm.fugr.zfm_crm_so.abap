@@ -17,6 +17,7 @@ FUNCTION zfm_crm_so.
        messtab    LIKE TABLE OF bdcmsgcoll,
        ext_return TYPE TABLE OF bapiret2,
        lv_msg     TYPE string.
+  DATA:w_ztsd001a TYPE ztsd001a.
   CLEAR:kunnrx,messtab,ext_return,lv_msg.
   IF action NE 'S'.
     IF data IS INITIAL.
@@ -426,6 +427,38 @@ FUNCTION zfm_crm_so.
         COMMIT WORK.
         rtmsg = 'S:数据保存成功'.
         rtype = 'S'.
+        SELECT SINGLE
+          vbak~vbeln,
+          vbak~auart
+          FROM vbak
+          JOIN ztsd001 ON vbak~vbeln = ztsd001~vbeln AND vbak~auart = ztsd001~auart
+          WHERE vbak~new_contractid = @data-new_contractid
+          AND vbak~vbtyp = 'G'
+          AND ztsd001~flag = '1'
+          INTO @DATA(w_ak)
+          .
+        IF sy-subrc EQ 0.
+          UPDATE ztsd001 SET
+            flag = 'A'
+            WHERE vbeln = @w_ak-vbeln
+            AND auart = @w_ak-auart
+          .
+          w_ztsd001a-vbeln = w_ak-vbeln.
+          w_ztsd001a-auart = w_ak-auart.
+          SELECT SINGLE MAX( item )
+            INTO @w_ztsd001a-item
+            FROM ztsd001a
+            WHERE vbeln = @w_ak-vbeln
+            AND   auart = @w_ak-auart.
+          ADD 1 TO w_ztsd001a-item.
+          w_ztsd001a-zname = sy-uname.
+          w_ztsd001a-zdate = sy-datum.
+          w_ztsd001a-ztime = sy-uzeit.
+          w_ztsd001a-flag = 'A'.
+          INSERT ztsd001a FROM w_ztsd001a.
+          COMMIT WORK.
+          rtmsg = |{ rtmsg }，合同审批状态变为初始状态|.
+        ENDIF.
         zfmdatasave2 'R'.
       ELSE.
         ROLLBACK WORK.

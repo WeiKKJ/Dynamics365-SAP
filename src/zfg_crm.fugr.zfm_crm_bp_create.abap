@@ -381,7 +381,7 @@ FUNCTION zfm_crm_bp_create.
 *--维护信用段数据
     CLEAR:lv_msg1.
     REFRESH lt_return_ukmbp[].
-    PERFORM frm_add_ukmbp IN PROGRAM zsdb002 CHANGING lt_return_ukmbp .
+    PERFORM frm_add_ukmbp USING data kunnr CHANGING lt_return_ukmbp .
     LOOP AT lt_return_frg WHERE type = 'E' OR type = 'A' OR type = 'X'.
       CONCATENATE lv_msg1 lt_return_frg-message INTO lv_msg1.
     ENDLOOP.
@@ -637,3 +637,68 @@ FUNCTION zfm_crm_bp_create.
 
 
 ENDFUNCTION.
+
+*&---------------------------------------------------------------------*
+*& Form FRM_ADD_UKMBP
+*&---------------------------------------------------------------------*
+*& text
+*&---------------------------------------------------------------------*
+*& -->  p1        text
+*& <--  p2        text
+*&---------------------------------------------------------------------*
+FORM frm_add_ukmbp USING VALUE(p_data) TYPE zscrm_bp VALUE(p_kunnr) CHANGING c_return TYPE ukm_t_monitor_return.
+
+  DATA: io_facade        TYPE REF TO cl_ukm_facade,
+        io_bupa_factory  TYPE REF TO cl_ukm_bupa_factory,
+        io_partner       TYPE REF TO cl_ukm_business_partner,
+        io_account       TYPE REF TO cl_ukm_account,
+        lw_bp_credit_sgm TYPE ukm_s_bp_cms_sgm.
+
+  DATA: lwa_ukm_s_bp_cms TYPE ukm_s_bp_cms.
+  DATA: lv_partner      TYPE bu_partner,
+        lv_credit_sgmnt TYPE ukm_credit_sgmnt.
+
+
+*  创建'MAINTAIN'对象
+  io_facade  = cl_ukm_facade=>create( i_activity = cl_ukm_cnst_eventing=>bp_maintenance ).
+  io_bupa_factory = io_facade->get_bupa_factory( ).
+
+  CALL FUNCTION 'CONVERSION_EXIT_ALPHA_INPUT'
+    EXPORTING
+      input  = p_kunnr
+    IMPORTING
+      output = p_kunnr.
+
+  lv_partner      = p_kunnr. "客户代码
+  lv_credit_sgmnt = p_data-bukrs. "信用段
+
+  io_partner = io_bupa_factory->get_business_partner( lv_partner ).
+  io_partner->get_bp_cms( IMPORTING es_bp_cms =  lwa_ukm_s_bp_cms ).
+
+  lwa_ukm_s_bp_cms-risk_class   = 'A'.  "风险类
+  lwa_ukm_s_bp_cms-check_rule   = '01'.  "检查规则
+  lwa_ukm_s_bp_cms-limit_rule   = 'STANDARD'.   "规则
+  "LWA_UKM_S_BP_CMS-CREDIT_GROUP = <FS_DATA>-CREDIT_GROUP. "客户组
+
+
+  io_partner->set_bp_cms( lwa_ukm_s_bp_cms ).
+
+  CALL METHOD io_bupa_factory->get_credit_account
+    EXPORTING
+      i_partner         = lv_partner
+      i_credit_sgmnt    = lv_credit_sgmnt
+    RECEIVING
+      ro_credit_account = io_account.
+
+  io_account->get_bp_cms_sgm( IMPORTING es_bp_cms_sgm = lw_bp_credit_sgm ).
+
+  lw_bp_credit_sgm-credit_limit   = 0."信用额度
+  lw_bp_credit_sgm-xcritical = 'X'.
+  lw_bp_credit_sgm-limit_chg_date = sy-datum.
+
+  io_account->set_bp_cms_sgm( EXPORTING is_bp_cms_sgm = lw_bp_credit_sgm ).
+
+  io_bupa_factory->save_all( EXPORTING i_upd_task = abap_true
+  RECEIVING et_return = c_return   ).
+
+ENDFORM.

@@ -423,7 +423,7 @@ FORM getitems .
     z~*
     FROM ztcrm_so_item AS z
     WHERE z~new_contractid = @gs_out-new_contractid
-    ORDER BY z~new_contractdetailid
+    ORDER BY z~zcrm_num,z~posnr,z~new_contractdetailid
     INTO CORRESPONDING FIELDS OF TABLE @gt_item
     .
   IF gt_item IS INITIAL.
