@@ -233,6 +233,7 @@ FUNCTION zfm_crm_so.
       *
       FROM ztcrm_so_item
       WHERE new_contractid = @data-new_contractid
+      AND zhtmxzf = ''
       INTO CORRESPONDING FIELDS OF TABLE @wa_check-item
       .
     SELECT
@@ -252,7 +253,14 @@ FUNCTION zfm_crm_so.
       INSERT INITIAL LINE INTO TABLE wa_check-so ASSIGNING FIELD-SYMBOL(<so>).
       MOVE-CORRESPONDING <lt_vbak> TO <so>.
       MOVE-CORRESPONDING <lt_vbak> TO <so>-ak.
-      SELECT vbeln,posnr,new_contractdetailid FROM vbap WHERE vbeln = @<lt_vbak>-vbeln INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
+      SELECT
+        vbeln,
+        posnr,
+        new_contractdetailid
+        FROM vbap
+        WHERE vbeln = @<lt_vbak>-vbeln
+*        AND zhtmxzf = ''
+        INTO CORRESPONDING FIELDS OF TABLE @<so>-ap.
     ENDLOOP.
 
     DESCRIBE TABLE wa_check-so LINES DATA(soline).
@@ -361,11 +369,26 @@ FUNCTION zfm_crm_so.
 
   CASE action.
     WHEN 'S'.
+      SELECT SINGLE
+        ztsd001~vbeln,
+        ztsd001~auart,
+        ztsd001~flag
+        FROM vbak
+        JOIN ztsd001 ON vbak~vbeln = ztsd001~vbeln AND vbak~auart = ztsd001~auart
+        WHERE vbak~new_contractid = @data-new_contractid
+        AND vbak~vbtyp = 'G'
+        AND flag = '0'
+        INTO @DATA(w_flag)
+        .
+      IF sy-subrc EQ 0.
+        rtmsg = |合同审批中，通知客服撤回合同OA审批再手动同步|.
+        fillmsg 'E' rtmsg.
+      ENDIF.
       MOVE-CORRESPONDING data TO wa_head.
       MOVE-CORRESPONDING data-items TO lt_item.
 
       LOOP AT lt_item ASSIGNING FIELD-SYMBOL(<lt_item>).
-        CLEAR:<lt_item>-posnr.
+        CLEAR:<lt_item>-posnr,<lt_item>-zhtmxzf.
         <lt_item>-new_contractid = data-new_contractid.
         IF wa_check IS NOT INITIAL.
           READ TABLE wa_check-item ASSIGNING FIELD-SYMBOL(<wa_check>) WITH KEY new_contractdetailid = <lt_item>-new_contractdetailid.
@@ -841,6 +864,7 @@ FUNCTION zfm_crm_so.
         JOIN vbap ON vbak~vbeln = vbap~vbeln
         WHERE vbak~vbeln = @data-vbeln
         AND vbak~vbtyp = 'G' "合同
+        AND vbap~zhtmxzf = ''
         ORDER BY vbak~vbeln,vbap~posnr
         INTO CORRESPONDING FIELDS OF TABLE @it_vbap
         .
@@ -1144,6 +1168,15 @@ FUNCTION zfm_crm_so.
         order_item_inx-updateflag = updateflag.
         APPEND:order_item_in,order_item_inx.
         "计划行
+*        setbapix 'schedule_lines' 'itm_number' <item>-posnr.
+*        setbapix 'schedule_lines' 'sched_line' '0001'.
+*        setbapix 'schedule_lines' 'req_qty   ' <item>-kwmeng.
+*        setbapix 'schedule_lines' 'req_date  ' <item>-edatu .
+*        schedule_linesx-itm_number = <item>-posnr.
+*        schedule_linesx-sched_line = '0001'.
+*        schedule_linesx-updateflag = 'D'.
+*        APPEND:schedule_lines,schedule_linesx.
+
         setbapix 'schedule_lines' 'itm_number' <item>-posnr.
         setbapix 'schedule_lines' 'sched_line' '0001'.
         setbapix 'schedule_lines' 'req_qty   ' <item>-kwmeng.

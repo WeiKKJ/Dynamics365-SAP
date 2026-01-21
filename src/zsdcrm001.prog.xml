@@ -3871,6 +3871,12 @@
    </CUA>
    <TPOOL>
     <item>
+     <ID>I</ID>
+     <KEY>T01</KEY>
+     <ENTRY>以下合同无法直接删除，请选择要打作废标志的行明细</ENTRY>
+     <LENGTH>48</LENGTH>
+    </item>
+    <item>
      <ID>R</ID>
      <ENTRY>CRM销售合同列表</ENTRY>
      <LENGTH>9</LENGTH>

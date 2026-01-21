@@ -423,6 +423,7 @@ FORM getitems .
     z~*
     FROM ztcrm_so_item AS z
     WHERE z~new_contractid = @gs_out-new_contractid
+    AND zhtmxzf = ''
     ORDER BY z~zcrm_num,z~posnr,z~new_contractdetailid
     INTO CORRESPONDING FIELDS OF TABLE @gt_item
     .
@@ -481,10 +482,23 @@ FORM getitems .
   ENDLOOP.
 
   SELECT MAX( posnr ) FROM vbap WHERE vbeln = @gs_out-vbeln INTO @posnr.
+  SELECT
+    posnr,
+    zhtmxzf
+    FROM vbap
+    WHERE vbeln = @gs_out-vbeln
+    ORDER BY posnr
+    INTO TABLE @DATA(t_apdel)
+    .
+
   LOOP AT gt_item ASSIGNING FIELD-SYMBOL(<gt_item>).
     IF <gt_item>-posnr IS INITIAL.
       ADD 10 TO posnr.
       <gt_item>-posnr = posnr.
+    ENDIF.
+    READ TABLE t_apdel ASSIGNING FIELD-SYMBOL(<t_apdel>) WITH KEY posnr = <gt_item>-posnr BINARY SEARCH.
+    IF sy-subrc EQ 0.
+      <gt_item>-zhtmxzf = <t_apdel>-zhtmxzf.
     ENDIF.
     PERFORM checkmenge USING <gt_item>-houdu CHANGING <gt_item>-houdus.
     PERFORM checkmenge USING <gt_item>-width CHANGING <gt_item>-widths.
