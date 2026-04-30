@@ -41,15 +41,16 @@ FORM i_longtext  USING    p_sapno p_tdid
                           p_zlongtext.
   DATA:text_string TYPE string,
        text_table  TYPE TABLE OF zslongtext.
-  CHECK p_zlongtext IS NOT INITIAL.
-  text_string = p_zlongtext.
-  CALL FUNCTION 'CONVERT_STRING_TO_TABLE'
-    EXPORTING
-      i_string         = p_zlongtext
-      i_tabline_length = 132
-*     I_UNICODE        =
-    TABLES
-      et_table         = text_table.
+  IF p_zlongtext IS NOT INITIAL.
+    text_string = p_zlongtext.
+    CALL FUNCTION 'CONVERT_STRING_TO_TABLE'
+      EXPORTING
+        i_string         = p_zlongtext
+        i_tabline_length = 132
+*       I_UNICODE        =
+      TABLES
+        et_table         = text_table.
+  ENDIF.
   CALL FUNCTION 'ZFM_DEALLONGTEXT'
     EXPORTING
       intype = 'I'
@@ -310,4 +311,28 @@ FORM CONCATENATEzqdhtgg  USING VALUE(p_item) TYPE zscrm_so_item
     p_wa_extp-ztdhdgc = p_item-zhdgc.
     CLEAR p_wa_extp-zhdgc.
   ENDIF.
+ENDFORM.
+
+FORM delete_text TABLES tdel STRUCTURE w_deltext.
+  LOOP AT tdel.
+    CALL FUNCTION 'DELETE_TEXT'
+      EXPORTING
+*       CLIENT          = SY-MANDT
+        id              = tdel-txt_id
+        language        = tdel-txt_language
+        name            = tdel-txt_name
+        object          = tdel-txt_object
+        savemode_direct = 'X'
+*       TEXTMEMORY_ONLY = ' '
+*       LOCAL_CAT       = ' '
+      EXCEPTIONS
+        not_found       = 1
+        OTHERS          = 2.
+    IF sy-subrc <> 0.
+      MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+              INTO tdel-msg
+              WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+      MODIFY tdel.
+    ENDIF.
+  ENDLOOP.
 ENDFORM.

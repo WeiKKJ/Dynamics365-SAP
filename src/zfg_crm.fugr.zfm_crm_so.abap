@@ -12,13 +12,12 @@ FUNCTION zfm_crm_so.
 *"----------------------------------------------------------------------
   zfmdatasave1 'ZFM_CRM_SO'.
   zfmdatasave2 'B'.
-  COMMIT WORK.
   DATA:kunnrx     TYPE abap_bool,
        messtab    LIKE TABLE OF bdcmsgcoll,
        ext_return TYPE TABLE OF bapiret2,
        lv_msg     TYPE string.
   DATA:w_ztsd001a TYPE ztsd001a.
-  CLEAR:kunnrx,messtab,ext_return,lv_msg.
+  CLEAR:kunnrx,messtab,ext_return,lv_msg,t_deltext.
   IF action NE 'S'.
     IF data IS INITIAL.
       fillmsg 'E' '请传入抬头数据后再调用本接口'.
@@ -491,25 +490,6 @@ FUNCTION zfm_crm_so.
 
       RETURN.
     WHEN 'I'.
-*      SELECT
-*        COUNT(*)
-*        FROM vbkd
-*        WHERE bstkd = @data-bstkd
-*        .
-*      IF sy-subrc = 0.
-*        rtmsg = |外部合同号：[{ data-bstkd }]已创建销售订单，请确认！|.
-*        fillmsg 'E' rtmsg.
-*      ENDIF.
-*      SELECT
-*        COUNT( DISTINCT vbeln ) AS countvn
-*        FROM vbak
-*        WHERE new_contractid = @data-new_contractid
-*        INTO @DATA(countvn)
-*      .
-*      IF countvn NE 0.
-*        rtmsg = |CRM合同ID[{ data-new_contractid }]存在于[{ countvn }]个合同！！！|.
-*        fillmsg 'E' rtmsg.
-*      ENDIF.
       IF data-items IS INITIAL.
         fillmsg 'E' '合同明细不能为空'.
       ENDIF.
@@ -554,6 +534,7 @@ FUNCTION zfm_crm_so.
 *增强字段
       CLEAR wa_extk.
       MOVE-CORRESPONDING data TO wa_extk.
+      wa_extk-zhjhl = data-kursk.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
       extensionin+30 = wa_extk.
@@ -898,6 +879,7 @@ FUNCTION zfm_crm_so.
 *增强字段
       CLEAR wa_extk.
       MOVE-CORRESPONDING data TO wa_extk.
+      wa_extk-zhjhl = data-kursk.
       CLEAR:extensionin.
       extensionin-structure = 'BAPE_VBAK'.
       extensionin+30 = wa_extk.
@@ -922,52 +904,37 @@ FUNCTION zfm_crm_so.
       LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBK'.
         ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE data TO <zlongtext>.
         IF sy-subrc EQ 0.
-          "切割文本
-          CLEAR:text_stream,text_stream[],lines[],lines.
-          text_stream-text = <zlongtext>.
-          APPEND text_stream.
-          CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-            TABLES
-              text_stream = text_stream
-              itf_text    = lines.
-          LOOP AT lines.
-            CLEAR:order_text.
-            order_text-doc_number = data-vbeln.
-            order_text-text_id    = <lt_ttxit>-tdid.
-            order_text-langu      = sy-langu.
-            order_text-format_col = '*' .
-            order_text-text_line  = lines-tdline.
-            APPEND order_text.
-          ENDLOOP.
+          IF <zlongtext> IS INITIAL.
+            CLEAR:w_deltext.
+            w_deltext-txt_id        = <lt_ttxit>-tdid.
+            w_deltext-txt_language  = sy-langu.
+            w_deltext-txt_name      = data-vbeln.
+            w_deltext-txt_object    = <lt_ttxit>-tdobject.
+            APPEND w_deltext TO t_deltext.
+          ELSE.
+            "切割文本
+            CLEAR:text_stream,text_stream[],lines[],lines.
+            text_stream-text = <zlongtext>.
+            APPEND text_stream.
+            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+              TABLES
+                text_stream = text_stream
+                itf_text    = lines.
+            LOOP AT lines.
+              CLEAR:order_text.
+              order_text-doc_number = data-vbeln.
+              order_text-text_id    = <lt_ttxit>-tdid.
+              order_text-langu      = sy-langu.
+              order_text-format_col = '*' .
+              order_text-text_line  = lines-tdline.
+              APPEND order_text.
+            ENDLOOP.
+          ENDIF.
           UNASSIGN <zlongtext>.
         ENDIF.
       ENDLOOP.
 **********************************
-      "合作伙伴
-***      CLEAR:sales_partners,sales_partnersc.
-***      sales_partners-partn_role = 'AG'.
-***      sales_partners-partn_numb = data-kunnr_ag.
-***
-***      sales_partnersc-document      = data-vbeln.
-****      sales_partnersc-itm_number    = '000000'.
-***      sales_partnersc-updateflag    = 'U'.
-***      sales_partnersc-partn_role    = 'AG'.
-****      sales_partnersc-p_numb_old    =  ''.
-***      SELECT SINGLE kunnr,posnr FROM vbpa WHERE vbeln = @data-vbeln AND posnr = '000000' AND parvw = 'AG' INTO ( @sales_partnersc-p_numb_old,@sales_partnersc-itm_number ).
-***      sales_partnersc-p_numb_new    =  data-kunnr_ag.
-***      APPEND:sales_partners,sales_partnersc.
-***      CLEAR:sales_partners,sales_partnersc.
-***      sales_partners-partn_role = 'WE'.
-***      sales_partners-partn_numb = data-kunnr_we.
-***
-***      sales_partnersc-document      = data-vbeln.
-****      sales_partnersc-itm_number    =  '000000'.
-***      sales_partnersc-updateflag    =  'U'.
-***      sales_partnersc-partn_role    =  'WE'.
-****      sales_partnersc-p_numb_old    =  ''.
-***      SELECT SINGLE kunnr,posnr FROM vbpa WHERE vbeln = @data-vbeln AND posnr = '000000' AND parvw = 'WE' INTO ( @sales_partnersc-p_numb_old,@sales_partnersc-itm_number ).
-***      sales_partnersc-p_numb_new    =  data-kunnr_we.
-***      APPEND:sales_partners,sales_partnersc.
+
 **********************************
       "行项目
       "新增行取最大行项目
@@ -1168,15 +1135,6 @@ FUNCTION zfm_crm_so.
         order_item_inx-updateflag = updateflag.
         APPEND:order_item_in,order_item_inx.
         "计划行
-*        setbapix 'schedule_lines' 'itm_number' <item>-posnr.
-*        setbapix 'schedule_lines' 'sched_line' '0001'.
-*        setbapix 'schedule_lines' 'req_qty   ' <item>-kwmeng.
-*        setbapix 'schedule_lines' 'req_date  ' <item>-edatu .
-*        schedule_linesx-itm_number = <item>-posnr.
-*        schedule_linesx-sched_line = '0001'.
-*        schedule_linesx-updateflag = 'D'.
-*        APPEND:schedule_lines,schedule_linesx.
-
         setbapix 'schedule_lines' 'itm_number' <item>-posnr.
         setbapix 'schedule_lines' 'sched_line' '0001'.
         setbapix 'schedule_lines' 'req_qty   ' <item>-kwmeng.
@@ -1189,24 +1147,33 @@ FUNCTION zfm_crm_so.
         LOOP AT lt_ttxit ASSIGNING <lt_ttxit> WHERE tdobject = 'VBBP'.
           ASSIGN COMPONENT <lt_ttxit>-tdid OF STRUCTURE <item> TO <zlongtext>.
           IF sy-subrc EQ 0.
-            "切割文本
-            CLEAR:text_stream,text_stream[],lines[],lines.
-            text_stream-text = <zlongtext>.
-            APPEND text_stream.
-            CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
-              TABLES
-                text_stream = text_stream
-                itf_text    = lines.
-            LOOP AT lines.
-              CLEAR:order_text.
-              order_text-doc_number = data-vbeln.
-              order_text-itm_number = <item>-posnr.
-              order_text-text_id    = <lt_ttxit>-tdid.
-              order_text-langu      = sy-langu .
-              order_text-format_col = '*' .
-              order_text-text_line  = lines-tdline.
-              APPEND order_text.
-            ENDLOOP.
+            IF <zlongtext> IS INITIAL.
+              CLEAR:w_deltext.
+              w_deltext-txt_id        = <lt_ttxit>-tdid.
+              w_deltext-txt_language  = sy-langu.
+              w_deltext-txt_name      = |{ data-vbeln }{ <item>-posnr }|.
+              w_deltext-txt_object    = <lt_ttxit>-tdobject.
+              APPEND w_deltext TO t_deltext.
+            ELSE.
+              "切割文本
+              CLEAR:text_stream,text_stream[],lines[],lines.
+              text_stream-text = <zlongtext>.
+              APPEND text_stream.
+              CALL FUNCTION 'CONVERT_STREAM_TO_ITF_TEXT'
+                TABLES
+                  text_stream = text_stream
+                  itf_text    = lines.
+              LOOP AT lines.
+                CLEAR:order_text.
+                order_text-doc_number = data-vbeln.
+                order_text-itm_number = <item>-posnr.
+                order_text-text_id    = <lt_ttxit>-tdid.
+                order_text-langu      = sy-langu .
+                order_text-format_col = '*' .
+                order_text-text_line  = lines-tdline.
+                APPEND order_text.
+              ENDLOOP.
+            ENDIF.
             UNASSIGN <zlongtext>.
           ENDIF.
         ENDLOOP.
@@ -1288,64 +1255,6 @@ FUNCTION zfm_crm_so.
         PERFORM bapirun(zpubform)  USING 'S'.
         rtmsg = |更改销售合同成功，单号：[{ salesdocument }]|.
         vbeln = salesdocument.
-*& kkw BDC更改售、送达方
-*        IF kunnrx = abap_true.
-*          CLEAR subrc.
-*          CALL FUNCTION 'ZFM_BDC_VA02_KUNNR'
-*            EXPORTING
-**             CTU       = 'X'
-**             MODE      = 'N'
-**             UPDATE    = 'L'
-**             GROUP     =
-**             USER      =
-**             KEEP      =
-**             HOLDDATE  =
-**             NODATA    = '/'
-*              vbeln_001 = CONV bdcdata-fval( data-vbeln )
-**             BSTKD_002 =
-*              kunnr_003 = CONV bdcdata-fval( data-kunnr_ag )
-*              kunnr_004 = CONV bdcdata-fval( data-kunnr_we )
-**             GUEBG_005 =
-**             GUEEN_006 =
-**             PRSDT_007 =
-**             VSBED_008 =
-**             BSTKD_009 =
-*              kunnr_010 = CONV bdcdata-fval( data-kunnr_ag )
-*              kunnr_011 = CONV bdcdata-fval( data-kunnr_we )
-**             GUEBG_012 =
-**             GUEEN_013 =
-**             PRSDT_014 =
-**             VSBED_015 =
-*            IMPORTING
-*              subrc     = subrc
-*            TABLES
-*              messtab   = messtab.
-*          IF subrc NE 0.
-*            rtmsg = |{ rtmsg },更改客户失败：|.
-*            CALL FUNCTION 'CONVERT_BDCMSGCOLL_TO_BAPIRET2'
-*              TABLES
-*                imt_bdcmsgcoll = messtab
-*                ext_return     = ext_return.
-*            LOOP AT ext_return INTO DATA(wa_return) ."WHERE type CA 'AEX' OR ( type = 'S' AND number  = '344' )
-*              "OR ( type = 'S' AND id(1)  = 'Z' ).
-*              CALL FUNCTION 'MESSAGE_TEXT_BUILD'
-*                EXPORTING
-*                  msgid               = wa_return-id
-*                  msgnr               = wa_return-number
-*                  msgv1               = wa_return-message_v1
-*                  msgv2               = wa_return-message_v2
-*                  msgv3               = wa_return-message_v3
-*                  msgv4               = wa_return-message_v4
-*                IMPORTING
-*                  message_text_output = lv_msg.
-*              CONCATENATE rtmsg lv_msg INTO rtmsg SEPARATED BY '/'.
-*            ENDLOOP.
-*            fillmsg 'E' rtmsg.
-*        ELSE.
-*          rtmsg = |{ rtmsg },更改客户成功|.
-*        ENDIF.
-*        ENDIF.
-*& End  BDC更改售、送达方 18.02.2025 13:32:34
         IF kunnrx = abap_true.
           rtmsg = |{ rtmsg },更改客户成功|.
         ENDIF.
@@ -1417,9 +1326,10 @@ FUNCTION zfm_crm_so.
       rtmsg = '不支持保存、新增、更新、删除以外其他功能'.
       fillmsg 'E' rtmsg.
   ENDCASE.
-
+  IF t_deltext IS NOT INITIAL.
+    PERFORM delete_text TABLES t_deltext.
+  ENDIF.
 
   zfmdatasave2 'R'.
-
 
 ENDFUNCTION.

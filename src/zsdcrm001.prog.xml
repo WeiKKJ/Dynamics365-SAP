@@ -1239,7 +1239,7 @@
       <TYPE>I</TYPE>
       <NEXTSCREEN>0000</NEXTSCREEN>
       <LINES>028</LINES>
-      <COLUMNS>154</COLUMNS>
+      <COLUMNS>155</COLUMNS>
      </HEADER>
      <CONTAINERS>
       <RPY_DYCATT>
@@ -1449,7 +1449,7 @@
        <LENGTH>010</LENGTH>
        <VISLENGTH>010</VISLENGTH>
        <HEIGHT>001</HEIGHT>
-       <FORMAT>CHAR</FORMAT>
+       <FORMAT>DEC</FORMAT>
        <OUTPUT_FLD>X</OUTPUT_FLD>
        <REQU_ENTRY>N</REQU_ENTRY>
       </RPY_DYFATC>
@@ -3870,12 +3870,6 @@
     </TIT>
    </CUA>
    <TPOOL>
-    <item>
-     <ID>I</ID>
-     <KEY>T01</KEY>
-     <ENTRY>以下合同无法直接删除，请选择要打作废标志的行明细</ENTRY>
-     <LENGTH>48</LENGTH>
-    </item>
     <item>
      <ID>R</ID>
      <ENTRY>CRM销售合同列表</ENTRY>

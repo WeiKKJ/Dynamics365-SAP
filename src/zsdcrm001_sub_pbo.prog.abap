@@ -246,7 +246,7 @@ FORM callalv_item .
   gs_slayt_item-box_fname  = 'SEL'.
   gs_slayt_item-zebra      = 'X'.
   PERFORM callalv_oo IN PROGRAM zvariant_compare
-  TABLES gt_item USING alv_grid_item gt_fldct_item 'P1' gs_slayt_item.
+  TABLES gt_item USING alv_grid_item gt_fldct_item 'ZCRM' gs_slayt_item.
 ENDFORM.
 *&---------------------------------------------------------------------*
 *& Form frm_refresh_alv_item

@@ -72,6 +72,15 @@ FIELD-SYMBOLS:<setbapikey>  TYPE any,
               <setbapixkey> TYPE any.
 DATA:setbapi  TYPE char60,
      setbapix TYPE char60.
+DATA:BEGIN OF w_deltext,
+       txt_id       LIKE thead-tdid,
+       txt_language LIKE thead-tdspras,
+       txt_name     LIKE thead-tdname,
+       txt_object   LIKE thead-tdobject,
+       msg          TYPE bapi_msg,
+     END OF w_deltext,
+     t_deltext LIKE TABLE OF w_deltext.
+
 DEFINE setbapix.
   UNASSIGN:<setbapikey>,<setbapixkey>.
   CLEAR:setbapi,setbapix.
